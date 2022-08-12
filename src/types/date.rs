@@ -6,7 +6,7 @@ use sqlx::{types::chrono::NaiveDateTime, Type};
 
 type SqlxDate = NaiveDateTime;
 
-#[derive(Serialize, Deserialize, Clone, Copy, Type)]
+#[derive(Serialize, Deserialize, Clone, Copy, Type, Default)]
 #[serde(crate = "rocket::serde")]
 #[sqlx(transparent)]
 pub struct Date(pub SqlxDate);

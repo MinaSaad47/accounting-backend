@@ -1,5 +1,5 @@
-pub mod user;
 pub mod company;
-pub mod money_capital;
-pub mod funder;
-pub mod anttorney;
+pub mod user;
+
+pub use company::*;
+pub use user::*;

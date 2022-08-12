@@ -1,33 +1,25 @@
 use rocket::{
     get, post,
-    response::status::{Created, NotFound, Unauthorized},
-    serde::{json::Json, Deserialize, Serialize},
+    response::status::{Created, NotFound},
+    serde::json::Json,
     State,
 };
 
 use crate::{
-    db::Storage,
-    models::{company::Company, funder::Funder},
-    types::uuid::Uuid,
+    db::{rows, Storage},
+    models,
+    types::{response::Response, uuid::Uuid},
 };
 
-#[derive(Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
-pub struct CreateData {
-    pub funder: Funder,
-    pub company: Company,
-}
-
-#[post("/company", format = "application/json", data = "<data>")]
+#[post("/company", format = "application/json", data = "<company>")]
 pub async fn post(
-    data: Json<CreateData>,
+    company: Json<models::Company>,
     storage: &State<Storage>,
-) -> Result<Created<Json<Company>>, Unauthorized<String>> {
-    let data = data.into_inner();
-    let funder = &data.funder;
-    let company = &data.company;
+) -> Result<Created<Json<Response<models::Company>>>, Json<Response<models::Company>>> {
+    let funder = &company.funders[0];
+    let company = &company.company;
     let uuid = Uuid::new();
-    let created_company = sqlx::query_as(
+    let company: rows::Company = sqlx::query_as(
         r#"
             INSERT INTO companies (
                 id,
@@ -63,29 +55,49 @@ pub async fn post(
     .bind(&company.email)
     .fetch_one(&storage.db)
     .await
-    .map_err(|e| Unauthorized(Some(format!("{e}"))))?;
+    .map_err(|e| {
+        Json(Response {
+            status: false,
+            message: format!("{e}"),
+            data: None,
+        })
+    })?;
 
-    sqlx::query!(
+    let funders: Vec<rows::Funder> = sqlx::query_as(
         r#"
             INSERT INTO funders (name, company_id)
             VALUES ($1, $2)
+            RETURNING *
         "#,
-        funder.name,
-        uuid,
     )
-    .execute(&storage.db)
+    .bind(&funder.name)
+    .bind(&uuid)
+    .fetch_all(&storage.db)
     .await
-    .map_err(|e| Unauthorized(Some(format!("{e}"))))?;
+    .map_err(|e| {
+        Json(Response {
+            status: false,
+            message: format!("{e}"),
+            data: None,
+        })
+    })?;
 
-    Ok(Created::new("").body(Json(created_company)))
+    Ok(Created::new("").body(Json(Response {
+        status: true,
+        message: "تم حفظ الشركة بنجاح".to_string(),
+        data: Some(models::Company {
+            company,
+            funders
+        }),
+    })))
 }
 
 #[get("/company?<search>")]
 pub async fn get(
     search: &str,
     storage: &State<Storage>,
-) -> Result<Json<Vec<Company>>, NotFound<String>> {
-    let companies: Vec<Company> = sqlx::query_as(&format!(
+) -> Result<Json<Vec<rows::Company>>, NotFound<String>> {
+    let companies: Vec<rows::Company> = sqlx::query_as(&format!(
         r#"
                 SELECT *
                 FROM companies

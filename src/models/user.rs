@@ -1,13 +1,10 @@
 use rocket::serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 
-use crate::types::uuid::Uuid;
+use crate::db::rows;
 
-#[derive(Serialize, Deserialize, FromRow)]
+#[derive(Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
 pub struct User {
-    #[serde(default)]
-    pub id: Uuid,
-    pub name: String,
-    pub password: String,
+    #[serde(flatten)]
+    pub user: rows::User,
 }
