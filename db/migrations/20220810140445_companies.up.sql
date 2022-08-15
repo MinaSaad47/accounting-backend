@@ -1,5 +1,5 @@
 -- Add up migration script here
-CREATE TABLE companies (
+CREATE TABLE IF NOT EXISTS companies (
     id VARCHAR PRIMARY KEY,
     commercial_feature VARCHAR NOT NULL,
     is_working BOOLEAN NOT NULL,

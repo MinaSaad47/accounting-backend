@@ -1,6 +1,9 @@
 pub mod rows;
+pub mod querable;
+
 
 pub use rows::*;
+pub use querable::*;
 
 use sqlx::{Pool, Sqlite};
 

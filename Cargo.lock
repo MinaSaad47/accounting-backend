@@ -7,6 +7,7 @@ name = "accounting-backend"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "paste",
  "rocket",
  "rocket_db_pools",
  "serde_json",
