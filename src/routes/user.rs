@@ -1,7 +1,8 @@
+use rocket::fairing::AdHoc;
 use rocket::response::status::BadRequest;
 use rocket::{response::status::Unauthorized, serde::json::Json};
 
-use rocket::{post, State};
+use rocket::{post, State, routes};
 
 use crate::db::Querable;
 use crate::{
@@ -56,4 +57,10 @@ pub async fn register(
         message: "تم التسجيل بنجاح".to_string(),
         data: Some(models::User { user }),
     }))
+}
+
+pub fn stage() -> AdHoc {
+    AdHoc::on_ignite("users stage", |rocket| async {
+        rocket.mount("/api/users", routes![register, login])
+    })
 }

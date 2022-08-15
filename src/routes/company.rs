@@ -1,7 +1,9 @@
 use rocket::{
+    fairing::AdHoc,
     futures::future,
     get, post, put,
     response::status::{BadRequest, Created, NotFound},
+    routes,
     serde::json::Json,
     State,
 };
@@ -14,7 +16,7 @@ use crate::{
     types::{response::Response, uuid::Uuid},
 };
 
-#[post("/company", format = "application/json", data = "<company>")]
+#[post("/", format = "application/json", data = "<company>")]
 pub async fn post(
     company: Json<models::Company>,
     storage: &State<Storage>,
@@ -98,7 +100,7 @@ pub async fn post(
     })))
 }
 
-#[get("/company?<search>")]
+#[get("/?<search>")]
 pub async fn get(
     search: &str,
     storage: &State<Storage>,
@@ -183,7 +185,7 @@ pub async fn get(
     }
 }
 
-#[put("/company", format = "application/json", data = "<company>")]
+#[put("/", format = "application/json", data = "<company>")]
 pub async fn put(
     mut company: Json<models::Company>,
     storage: &State<Storage>,
@@ -311,4 +313,10 @@ pub async fn put(
             money_capitals,
         }),
     })))
+}
+
+pub fn stage() -> AdHoc {
+    AdHoc::on_ignite("companies stage", |rocket| async {
+        rocket.mount("/api/company", routes![post, put, get])
+    })
 }
