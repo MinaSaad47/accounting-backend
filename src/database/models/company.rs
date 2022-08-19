@@ -1,7 +1,8 @@
-use crate::db::rows;
 use rocket::serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+use crate::database::rows;
+
+#[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(crate = "rocket::serde")]
 pub struct Company {
     #[serde(flatten)]

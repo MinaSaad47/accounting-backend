@@ -1,12 +1,11 @@
 #[macro_use]
 extern crate rocket;
 
-use accounting_backend::{db, routes};
+use accounting_backend::{database, routes};
 
 #[launch]
-async fn rocket() -> _ {
+fn rocket() -> _ {
     rocket::build()
-        .attach(db::stage())
-        .attach(routes::company::stage())
-        .attach(routes::user::stage())
+        .attach(database::stage())
+        .attach(routes::stage())
 }

@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  dev:
+    image: 'rust:1.63'
+    volumes:
+      - './:/usr/src/accounting-backend:z'
+    working_dir: '/usr/src/accounting-backend'
+    environment:
+      - 'DATABASE_URL=postgres://admin:secret@localhost/postgres_db'
+      - 'USER=ms47'

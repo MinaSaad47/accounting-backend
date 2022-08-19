@@ -1,0 +1,6 @@
+/target
+.dockerignore
+Dockerfile
+.git
+.gitignore
+docker-compose.yaml
