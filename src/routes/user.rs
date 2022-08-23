@@ -1,74 +1,61 @@
 use rocket::fairing::AdHoc;
-use rocket::response::status::BadRequest;
-use rocket::{response::status::Unauthorized, serde::json::Json};
+use rocket::serde::json::Json;
 
-use rocket::{post, routes, State};
+use rocket::{get, post, routes, State};
 
-use crate::database::{models, rows, DatabaseAccountingApi};
+use crate::accounting_api::AcountingApi;
+use crate::auth::{AGuard, ApiToken, UGuard};
+use crate::database::{models, DatabaseAccountingApi};
 
-use crate::types::response::Response;
+use crate::types::response::{ResponseEnum, ResponseResult};
 
 #[post("/login", format = "application/json", data = "<user>")]
 pub async fn login_user(
     user: Json<models::User>,
     storage: &State<DatabaseAccountingApi>,
-) -> Result<Json<Response<models::User>>, Unauthorized<String>> {
-    let user = &user.user;
-    let user = sqlx::query_as!(
-        rows::User,
-        r#"
-        SELECT id AS "id: _", name AS "name: _", password AS "password: _"
-        FROM users
-        WHERE name = $1 AND password = $2
-        "#,
-        user.name,
-        user.password
-    )
-    .fetch_one(&storage.db)
-    .await
-    .map_err(|e| Unauthorized(Some(format!("{e}"))))?;
-    Ok(Json(Response {
-        status: true,
-        message: "تم التسجيل بنجاح".to_string(),
-        data: Some(models::User { user }),
-    }))
+) -> ResponseResult<ApiToken> {
+    let user = storage.login_user(&user).await?;
+    let c = &user.user;
+    let token = ApiToken::generate(c.id.expect("valid user id"), c.is_admin);
+    Ok(ResponseEnum::ok(token, "تم تسجيل الدخول بنجاح".into()))
 }
 
-#[post("/register", format = "application/json", data = "<user>")]
-pub async fn register_user(
+#[post("/", format = "application/json", data = "<user>")]
+pub async fn create_user(
     user: Json<models::User>,
     storage: &State<DatabaseAccountingApi>,
-) -> Result<Json<Response<models::User>>, BadRequest<Json<Response<models::User>>>> {
-    let user = &user.user;
-    let user = sqlx::query_as!(
-        rows::User,
-        r#"
-            INSERT INTO users (name, password)
-            VALUES ($1, $2)
-            RETURNING id AS "id: _", name AS "name: _", password AS "password: _"
-        "#,
-        user.name,
-        user.password
-    )
-    .fetch_one(&storage.db)
-    .await
-    .map_err(|e| {
-        BadRequest(Some(Json(Response {
-            status: false,
-            message: format!("{e}"),
-            data: None,
-        })))
-    })?;
+    _ag: AGuard,
+) -> ResponseResult<models::User> {
+    let user = storage.create_user(&user).await?;
+    Ok(ResponseEnum::created(
+        user,
+        "تم تسجيل مستخدم جديد بنجاح".into(),
+    ))
+}
 
-    Ok(Json(Response {
-        status: true,
-        message: "تم التسجيل بنجاح".to_string(),
-        data: Some(models::User { user }),
-    }))
+#[get("/")]
+pub async fn get_users_admin(
+    storage: &State<DatabaseAccountingApi>,
+    _ag: AGuard,
+) -> ResponseResult<Vec<models::User>> {
+    let users = storage.get_users().await?;
+    Ok(ResponseEnum::ok(users, "تم ايجاد مستخدمين".into()))
+}
+
+#[get("/", rank = 2)]
+pub async fn get_users_user(
+    storage: &State<DatabaseAccountingApi>,
+    _ug: UGuard,
+) -> ResponseResult<Vec<models::User>> {
+    let users = storage.get_users().await?;
+    Ok(ResponseEnum::ok(users, "تم ايجاد مستخدمين".into()))
 }
 
 pub fn stage() -> AdHoc {
     AdHoc::on_ignite("users stage", |rocket| async {
-        rocket.mount("/api/users", routes![register_user, login_user])
+        rocket.mount(
+            "/api/users",
+            routes![create_user, login_user, get_users_user, get_users_admin],
+        )
     })
 }
