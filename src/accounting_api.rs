@@ -29,6 +29,20 @@ pub trait AcountingApi {
     async fn pay_user(&self, u: &Self::User, v: f64) -> Result<Self::User, Error>;
     async fn login_user(&self, u: &Self::User) -> Result<Self::User, Error>;
 
-    async fn get_money_capitals(&self, user_id: Option<i64>, company_id: Option<i64>) -> Result<Vec<Self::MoneyCapital>, Error>;
-    async fn create_money_capital(&self, user_id: i64, company_id: i64, value: f64) -> Result<Self::MoneyCapital, Error>;
+    async fn get_money_capitals(
+        &self,
+        user_id: Option<i64>,
+        company_id: Option<i64>,
+    ) -> Result<Vec<Self::MoneyCapital>, Error>;
+    async fn create_money_capital(
+        &self,
+        user_id: i64,
+        company_id: i64,
+        value: f64,
+        description: &str,
+    ) -> Result<Self::MoneyCapital, Error>;
+    async fn delete_money_capital(
+        &self,
+        id: i64,
+    ) -> Result<(), Error>;
 }

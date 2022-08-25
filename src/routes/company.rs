@@ -3,7 +3,7 @@ use rocket::{fairing::AdHoc, get, post, put, routes, serde::json::Json, State};
 use crate::{
     accounting_api::AcountingApi,
     auth::{AGuard, UGuard},
-    database::{models,rows, DatabaseAccountingApi},
+    database::{models, rows, DatabaseAccountingApi},
     types::response::{ResponseEnum, ResponseResult},
 };
 
@@ -63,7 +63,12 @@ pub async fn create_money_capital(
     ug: UGuard,
 ) -> ResponseResult<models::MoneyCapital> {
     let money_capital = storage
-        .create_money_capital(ug.0, company_id, money_capital.value)
+        .create_money_capital(
+            ug.0,
+            company_id,
+            money_capital.value,
+            &money_capital.description,
+        )
         .await?;
 
     Ok(ResponseEnum::created(

@@ -9,6 +9,7 @@ pub struct MoneyCapital {
     #[serde(default)]
     pub id: Option<i64>,
     pub value: f64,
+    pub description: String,
     #[serde(default)]
     pub time: Option<DateTime<Utc>>,
     #[serde(default)]

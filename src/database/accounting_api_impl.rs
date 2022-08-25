@@ -227,7 +227,12 @@ impl AcountingApi for super::DatabaseAccountingApi {
                     WHERE
                         id = $1
                     RETURNING
-                        id AS "id: _", value, time AS "time?: _", user_id AS "user_id!: _", company_id AS "company_id!: _"
+                        id AS "id: _",
+                        value,
+                        description,
+                        time AS "time?: _",
+                        user_id AS "user_id!: _",
+                        company_id AS "company_id!: _"
                 "#,
                 &money_capital.id as _,
                 &money_capital.value,
@@ -240,15 +245,21 @@ impl AcountingApi for super::DatabaseAccountingApi {
                     r#"
                         INSERT INTO
                             money_capitals (
-                                value, time, company_id
+                                value, description, time, company_id
                             )
                         VALUES (
-                            $1, $2, $3
+                            $1, $2, $3, $4
                         )
                         RETURNING
-                        id AS "id: _", value, time AS "time?: _", user_id AS "user_id!: _", company_id AS "company_id!: _"
+                        id AS "id: _",
+                        value,
+                        description,
+                        time AS "time?: _",
+                        user_id AS "user_id!: _",
+                        company_id AS "company_id!: _"
                     "#,
                     &money_capital.value,
+                    &money_capital.description,
                     Utc::now(),
                     &company.id as _,
                 )
@@ -331,7 +342,12 @@ impl AcountingApi for super::DatabaseAccountingApi {
                     rows::MoneyCapital,
                     r#"
                         SELECT
-                            id AS "id: _", value, time AS "time?: _", user_id AS "user_id!: _", company_id AS "company_id!: _"
+                            id AS "id: _",
+                            value,
+                            description,
+                            time AS "time?: _",
+                            user_id AS "user_id!: _",
+                            company_id AS "company_id!: _"
                         FROM
                             money_capitals
                         WHERE
@@ -484,19 +500,26 @@ impl AcountingApi for super::DatabaseAccountingApi {
         user_id: Option<i64>,
         company_id: Option<i64>,
     ) -> Result<Vec<Self::MoneyCapital>, Self::Error> {
-        let money_capitals = sqlx::query_as!(rows::MoneyCapital,
+        let money_capitals = sqlx::query_as!(
+            rows::MoneyCapital,
             r#"
                 SELECT
-                    id AS "id: _", value, time AS "time?: _", user_id AS "user_id!: _", company_id AS "company_id!: _"
+                    id AS "id: _",
+                    value,
+                    description,
+                    time AS "time?: _",
+                    user_id AS "user_id!: _",
+                    company_id AS "company_id!: _"
                 FROM
                     money_capitals
                 WHERE
                     (user_id = $1 OR $1 IS NULL) AND (company_id = $2 OR $2 IS NULL)
-            "#
-            ,
+            "#,
             user_id,
             company_id,
-        ).fetch_all(&self.db).await?;
+        )
+        .fetch_all(&self.db)
+        .await?;
 
         let money_capitals =
             future::join_all(money_capitals.into_iter().map(|money_capital| async {
@@ -548,6 +571,7 @@ impl AcountingApi for super::DatabaseAccountingApi {
         user_id: i64,
         company_id: i64,
         value: f64,
+        description: &str,
     ) -> Result<Self::MoneyCapital, Self::Error> {
         let user = sqlx::query!(
             r#"
@@ -601,19 +625,21 @@ impl AcountingApi for super::DatabaseAccountingApi {
             rows::MoneyCapital,
             r#"
                 INSERT INTO
-                    money_capitals (user_id, company_id, value)
+                    money_capitals (user_id, company_id, value, description)
                 VALUES
-                    ($1, $2, $3)
+                    ($1, $2, $3, $4)
                 RETURNING
                     id AS "id?: _",
                     user_id AS "user_id!: _",
                     company_id AS "company_id!: _",
                     value,
+                    description,
                     time AS "time?: _"
             "#,
             user.id,
             company.id,
-            value
+            value,
+            description,
         )
         .fetch_one(&mut transaction)
         .await?;
@@ -625,4 +651,17 @@ impl AcountingApi for super::DatabaseAccountingApi {
             money_capital,
         })
     }
+    async fn delete_money_capital(&self, id: i64) -> Result<(), Self::Error> {
+        sqlx::query!(
+            r#"
+                DELETE FROM
+                    money_capitals
+                WHERE
+                    id = $1
+            "#,
+            id
+        )
+        .execute(&self.db)
+        .await?;
+        Ok(())
 }
