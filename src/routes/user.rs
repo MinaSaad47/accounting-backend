@@ -51,11 +51,36 @@ pub async fn get_users_user(
     Ok(ResponseEnum::ok(users, "تم ايجاد مستخدمين".into()))
 }
 
+#[get("/current")]
+pub async fn get_current_user(
+    storage: &State<DatabaseAccountingApi>,
+    ug: UGuard,
+) -> ResponseResult<models::User> {
+    let user = storage.get_user(ug.0).await?;
+    Ok(ResponseEnum::ok(user, "تم ايجاد مستخدمين".into()))
+}
+
+#[get("/current", rank = 2)]
+pub async fn get_current_admin(
+    storage: &State<DatabaseAccountingApi>,
+    ag: AGuard,
+) -> ResponseResult<models::User> {
+    let user = storage.get_user(ag.0).await?;
+    Ok(ResponseEnum::ok(user, "تم ايجاد مستخدمين".into()))
+}
+
 pub fn stage() -> AdHoc {
     AdHoc::on_ignite("users stage", |rocket| async {
         rocket.mount(
             "/api/users",
-            routes![create_user, login_user, get_users_user, get_users_admin],
+            routes![
+                create_user,
+                login_user,
+                get_users_user,
+                get_users_admin,
+                get_current_user,
+                get_current_admin
+            ],
         )
     })
 }

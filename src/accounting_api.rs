@@ -27,6 +27,7 @@ pub trait AcountingApi {
     async fn update_user(&self, u: &Self::User) -> Result<Self::User, Error>;
     async fn get_users(&self) -> Result<Vec<Self::User>, Error>;
     async fn pay_user(&self, u: &Self::User, v: f64) -> Result<Self::User, Error>;
+    async fn get_user(&self, id: i64) -> Result<Self::User, Error>;
     async fn login_user(&self, u: &Self::User) -> Result<Self::User, Error>;
 
     async fn get_money_capitals(

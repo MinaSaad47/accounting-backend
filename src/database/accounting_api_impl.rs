@@ -664,4 +664,26 @@ impl AcountingApi for super::DatabaseAccountingApi {
         .execute(&self.db)
         .await?;
         Ok(())
+    }
+    async fn get_user(&self, id: i64) -> Result<Self::User, Self::Error> {
+        let user = sqlx::query_as!(
+            rows::User,
+            r#"
+                SELECT
+                    id AS "id: _",
+                    name,
+                    password,
+                    value,
+                    is_admin
+                FROM
+                    users
+                WHERE
+                    id = $1
+            "#,
+            id,
+        )
+        .fetch_one(&self.db)
+        .await?;
+        Ok(models::User { user })
+    }
 }
