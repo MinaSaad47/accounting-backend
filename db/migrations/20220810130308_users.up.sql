@@ -4,5 +4,8 @@ CREATE TABLE IF NOT EXISTS users (
     name VARCHAR NOT NULL,
     password VARCHAR NOT NULL,
     is_admin BOOL NOT NULL DEFAULT FALSE,
-    value DOUBLE PRECISION NOT NULL
+    value DOUBLE PRECISION NOT NULL DEFAULT 0
 );
+
+INSERT INTO users (name, password, is_admin)
+VALUES ('admin', 'admin', true);
