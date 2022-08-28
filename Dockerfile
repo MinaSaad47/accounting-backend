@@ -2,8 +2,7 @@ FROM rust:1.63 as builder
 RUN cargo install sqlx-cli
 WORKDIR /accounting_backend
 COPY . .
-ENV DATABASE_URL=sqlite:db/storage.db
-RUN sqlx mig --source db/migrations run
+ENV SQLX_OFFLINE=true
 RUN cargo build --release
 
 FROM debian:bullseye-slim
@@ -18,7 +17,7 @@ RUN groupadd $APP_USER \
     && mkdir -p ${APP}/db
 COPY --from=builder /accounting_backend/target/release/accounting-backend ${APP}/accounting-backend
 COPY --from=builder /accounting_backend/db ${APP}/db/
+COPY Rocket.toml ${APP}/
 RUN chown -R $APP_USER:$APP_USER ${APP}
-ENV DATABASE_URL=sqlite:db/storage.db
 WORKDIR ${APP}
 CMD ["./accounting-backend"]

@@ -14,7 +14,7 @@ thiserror = "1"
 [dependencies.sqlx]
 version = "0.6.1"
 default-features = false
-features = ["runtime-tokio-rustls", "migrate", "macros", "postgres", "chrono", "json"]
+features = ["runtime-tokio-rustls", "migrate", "macros", "postgres", "chrono", "json", "offline"]
 
 
 [dependencies.chrono]
