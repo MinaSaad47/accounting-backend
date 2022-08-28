@@ -22,6 +22,7 @@ pub trait AcountingApi {
     async fn update_company(&self, c: &mut Self::Company) -> Result<Self::Company, Error>;
     async fn search_company(&self, s: &str) -> Result<Vec<Self::Company>, Error>;
     async fn pay_company(&self, c: &Self::Company, v: f64) -> Result<Self::Company, Error>;
+    async fn delete_company(&self, id: i64) -> Result<(), Error>;
 
     async fn create_user(&self, u: &Self::User) -> Result<Self::User, Error>;
     async fn update_user(&self, u: &Self::User) -> Result<Self::User, Error>;

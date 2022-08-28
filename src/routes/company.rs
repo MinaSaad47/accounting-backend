@@ -1,4 +1,4 @@
-use rocket::{fairing::AdHoc, get, post, put, routes, serde::json::Json, State};
+use rocket::{delete, fairing::AdHoc, get, post, put, routes, serde::json::Json, State};
 
 use crate::{
     accounting_api::AcountingApi,
@@ -77,6 +77,16 @@ pub async fn create_money_capital(
     ))
 }
 
+#[delete("/<id>")]
+pub async fn delete_company(
+    id: i64,
+    storage: &State<DatabaseAccountingApi>,
+    _ag: AGuard,
+) -> ResponseResult<()> {
+    storage.delete_company(id).await?;
+    Ok(ResponseEnum::ok((), "تم حذف الشركة".into()))
+}
+
 pub fn stage() -> AdHoc {
     AdHoc::on_ignite("companies stage", |rocket| async {
         rocket.mount(
@@ -87,6 +97,7 @@ pub fn stage() -> AdHoc {
                 search_company_admin,
                 search_company_user,
                 create_money_capital,
+                delete_company,
             ],
         )
     })
