@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use rocket::async_trait;
 
 use thiserror::Error;
@@ -6,10 +8,10 @@ use thiserror::Error;
 pub enum Error {
     #[error("لم يتم العثور علي هدف")]
     ObjectNotFound,
-    #[error("لا يوجد قيمة كافية: {0} < {1}`")]
+    #[error("لا يوجد قيمة كافية: \"{0} > {1}\"")]
     NotEnoughUserValue(f64, f64),
-    #[error("لم يتم العثور علي مستخدم")]
-    Other,
+    #[error("حدث خطأ في قاعدة البيانات:\n {0}")]
+    Other(Cow<'static, str>),
 }
 
 #[async_trait]

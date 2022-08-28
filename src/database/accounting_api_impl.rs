@@ -1,17 +1,24 @@
+use std::mem;
+
 use crate::accounting_api::{self, AcountingApi};
 use rocket::{async_trait, futures::future};
 
 use chrono::Utc;
-
-use std::mem;
+use sqlx::postgres::PgDatabaseError;
 
 use super::{models, rows};
 
 impl From<sqlx::Error> for accounting_api::Error {
     fn from(error: sqlx::Error) -> Self {
+        rocket::error!("[Database] {error:#?}");
         match error {
             sqlx::Error::RowNotFound => accounting_api::Error::ObjectNotFound,
-            _ => accounting_api::Error::Other,
+            sqlx::Error::Database(error) => error
+                .try_downcast_ref::<PgDatabaseError>()
+                .and_then(|error| error.detail())
+                .map(|error| accounting_api::Error::Other(error.to_owned().into()))
+                .unwrap_or(accounting_api::Error::Other("غير معروف".into())),
+            _ => accounting_api::Error::Other("غير معروف".into()),
         }
     }
 }

@@ -1,7 +1,7 @@
 -- Add up migration script here
 CREATE TABLE  IF NOT EXISTS companies (
     id BIGSERIAL PRIMARY KEY,
-    commercial_feature VARCHAR NOT NULL,
+    commercial_feature VARCHAR NOT NULL UNIQUE,
     is_working BOOLEAN NOT NULL,
     legal_entity VARCHAR NOT NULL,
     file_number VARCHAR,
@@ -21,5 +21,5 @@ CREATE TABLE  IF NOT EXISTS companies (
     user_name VARCHAR NOT NULL,
     passport VARCHAR,
     verification_code VARCHAR,
-    email VARCHAR NOT NULL
+    email VARCHAR NOT NULL UNIQUE
 );
