@@ -445,23 +445,22 @@ impl AcountingApi for super::DatabaseAccountingApi {
             .map(|user| models::User { user })
             .collect())
     }
-    async fn pay_user(&self, c: &Self::User, v: f64) -> Result<Self::User, Self::Error> {
+    async fn pay_user(&self, id: i64, v: f64) -> Result<Self::User, Self::Error> {
         let mut transaction = self.db.begin().await?;
 
-        let user = &c.user;
         let user = sqlx::query_as!(
             rows::User,
             r#"
                 UPDATE
                     users
                 SET
-                    value = value + $2
+                    value = $2
                 WHERE
                     id = $1
                 RETURNING
                     id AS "id: _", name, password, is_admin, value
             "#,
-            &user.id as _,
+            id as _,
             v,
         )
         .fetch_one(&mut transaction)
@@ -652,17 +651,36 @@ impl AcountingApi for super::DatabaseAccountingApi {
         })
     }
     async fn delete_money_capital(&self, id: i64) -> Result<(), Self::Error> {
-        sqlx::query!(
+        let mut transaction = self.db.begin().await?;
+        let result = sqlx::query!(
             r#"
                 DELETE FROM
                     money_capitals
                 WHERE
                     id = $1
+                RETURNING
+                    user_id, value
             "#,
             id
         )
-        .execute(&self.db)
+        .fetch_one(&mut transaction)
         .await?;
+
+        sqlx::query!(
+            r#"
+                UPDATE
+                    users
+                SET
+                    value = value + $2
+                WHERE
+                    id = $1
+            "#,
+            result.user_id,
+            result.value,
+        )
+        .execute(&mut transaction)
+        .await?;
+        transaction.commit().await?;
         Ok(())
     }
     async fn get_user(&self, id: i64) -> Result<Self::User, Self::Error> {
@@ -685,5 +703,35 @@ impl AcountingApi for super::DatabaseAccountingApi {
         .fetch_one(&self.db)
         .await?;
         Ok(models::User { user })
+    }
+
+    async fn delete_company(&self, id: i64) -> Result<(), Self::Error> {
+        sqlx::query!(
+            r#"
+                DELETE FROM
+                    companies
+                WHERE
+                    id = $1
+            "#,
+            id,
+        )
+        .execute(&self.db)
+        .await?;
+        Ok(())
+    }
+
+    async fn delete_user(&self, id: i64) -> Result<(), Self::Error> {
+        sqlx::query!(
+            r#"
+                DELETE FROM
+                    users
+                WHERE
+                    id = $1
+            "#,
+            id,
+        )
+        .execute(&self.db)
+        .await?;
+        Ok(())
     }
 }

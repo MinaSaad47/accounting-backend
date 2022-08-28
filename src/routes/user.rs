@@ -1,7 +1,8 @@
 use rocket::fairing::AdHoc;
 use rocket::serde::json::Json;
+use rocket::serde::{Deserialize, Serialize};
 
-use rocket::{get, post, routes, State};
+use rocket::{get, patch, post, routes, State, delete};
 
 use crate::accounting_api::AcountingApi;
 use crate::auth::{AGuard, ApiToken, UGuard};
@@ -69,6 +70,33 @@ pub async fn get_current_admin(
     Ok(ResponseEnum::ok(user, "تم ايجاد مستخدمين".into()))
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(crate = "rocket::serde")]
+pub struct Value {
+    value: f64,
+}
+
+#[patch("/<id>", format = "application/json", data = "<value>")]
+pub async fn pay_user(
+    id: i64,
+    value: Json<Value>,
+    storage: &State<DatabaseAccountingApi>,
+    _ag: AGuard,
+) -> ResponseResult<models::User> {
+    let user = storage.pay_user(id, value.value).await?;
+    Ok(ResponseEnum::ok(user, "تم تعديل القيمة".into()))
+}
+
+#[delete("/<id>")]
+pub async fn delete_user(
+    id: i64,
+    storage: &State<DatabaseAccountingApi>,
+    _ag: AGuard,
+) -> ResponseResult<()> {
+    storage.delete_user(id).await?;
+    Ok(ResponseEnum::ok((), "تم حذف المستخدم".into()))
+}
+
 pub fn stage() -> AdHoc {
     AdHoc::on_ignite("users stage", |rocket| async {
         rocket.mount(
@@ -79,7 +107,9 @@ pub fn stage() -> AdHoc {
                 get_users_user,
                 get_users_admin,
                 get_current_user,
-                get_current_admin
+                get_current_admin,
+                pay_user,
+                delete_user,
             ],
         )
     })
