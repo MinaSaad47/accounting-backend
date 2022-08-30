@@ -388,14 +388,15 @@ impl AcountingApi for super::DatabaseAccountingApi {
             rows::User,
             r#"
                 INSERT INTO
-                    users (name, password, value)
+                    users (name, password, is_admin, value)
                 VALUES
-                    ($1, $2, 0)
+                    ($1, $2, $3, 0)
                 RETURNING
                     id AS "id: _", name, password, is_admin, value
             "#,
             &user.name,
             &user.password,
+            &user.is_admin,
         )
         .fetch_one(&mut transaction)
         .await?;
