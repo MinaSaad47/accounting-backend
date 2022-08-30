@@ -21,7 +21,6 @@ pub struct Company {
     pub accounts: String,
     pub joining_date: Option<DateTime<Utc>>,
     pub natural_id: Option<String>,
-    pub money_capital: Option<f64>,
     pub record_side: Option<String>,
     pub record_number: String,
     pub user_name: String,

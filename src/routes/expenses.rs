@@ -27,13 +27,13 @@ struct User {
 }
 
 #[get("/?<param..>")]
-pub async fn get_money_capitals(
+pub async fn get_expenses(
     param: GetParam,
     storage: &State<DatabaseAccountingApi>,
-) -> ResponseResult<Vec<models::MoneyCapital>> {
+) -> ResponseResult<Vec<models::Expense>> {
     rocket::debug!("{param:?}");
     let money_capitals = storage
-        .get_money_capitals(param.user.map(|u| u.id), param.company.map(|c| c.id))
+        .get_expenses(param.user.map(|u| u.id), param.company.map(|c| c.id))
         .await?;
     Ok(ResponseEnum::ok(
         money_capitals,
@@ -42,20 +42,20 @@ pub async fn get_money_capitals(
 }
 
 #[delete("/<id>")]
-pub async fn delete_money_capital(
+pub async fn delete_expense(
     id: i64,
     storage: &State<DatabaseAccountingApi>,
     _ug: UGuard,
 ) -> ResponseResult<()> {
-    storage.delete_money_capital(id).await?;
+    storage.delete_expense(id).await?;
     Ok(ResponseEnum::ok((), "تم مسح رأس المال: {id}".into()))
 }
 
 pub fn stage() -> AdHoc {
-    AdHoc::on_ignite("money capitals stage", |rocket| async {
+    AdHoc::on_ignite("expenses stage", |rocket| async {
         rocket.mount(
-            "/api/money_capitals",
-            routes![get_money_capitals, delete_money_capital],
+            "/api/expenses",
+            routes![get_expenses, delete_expense],
         )
     })
 }

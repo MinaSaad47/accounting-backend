@@ -5,7 +5,7 @@ use sqlx::FromRow;
 
 #[derive(Serialize, Deserialize, FromRow, Debug, Clone)]
 #[serde(crate = "rocket::serde")]
-pub struct MoneyCapital {
+pub struct Expense {
     #[serde(default)]
     pub id: Option<i64>,
     pub value: f64,

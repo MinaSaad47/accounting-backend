@@ -1,5 +1,5 @@
 -- Add up migration script here
-CREATE TABLE IF NOT EXISTS money_capitals (
+CREATE TABLE IF NOT EXISTS expenses (
     id BIGSERIAL PRIMARY KEY,
     value DOUBLE PRECISION NOT NULL,
     description VARCHAR NOT NULL,

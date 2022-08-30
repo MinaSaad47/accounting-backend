@@ -1,7 +1,9 @@
 pub mod company;
 pub mod user;
-pub mod money_capital;
+pub mod expense;
+pub mod income;
 
 pub use company::*;
 pub use user::*;
-pub use money_capital::*;
+pub use expense::*;
+pub use income::*;

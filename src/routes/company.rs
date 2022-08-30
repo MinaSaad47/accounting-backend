@@ -52,29 +52,26 @@ pub async fn update_company(
 }
 
 #[post(
-    "/<company_id>/money_capitals",
+    "/<company_id>/expenses",
     format = "application/json",
-    data = "<money_capital>"
+    data = "<expense>"
 )]
-pub async fn create_money_capital(
+pub async fn create_expense(
     company_id: i64,
-    money_capital: Json<rows::MoneyCapital>,
+    expense: Json<rows::Expense>,
     storage: &State<DatabaseAccountingApi>,
     ug: UGuard,
-) -> ResponseResult<models::MoneyCapital> {
-    let money_capital = storage
-        .create_money_capital(
+) -> ResponseResult<models::Expense> {
+    let expense = storage
+        .create_expense(
             ug.0,
             company_id,
-            money_capital.value,
-            &money_capital.description,
+            expense.value,
+            &expense.description,
         )
         .await?;
 
-    Ok(ResponseEnum::created(
-        money_capital,
-        "تم اضافة رأس مال".into(),
-    ))
+    Ok(ResponseEnum::created(expense, "تم اضافة رأس مال".into()))
 }
 
 #[delete("/<id>")]
@@ -96,7 +93,7 @@ pub fn stage() -> AdHoc {
                 update_company,
                 search_company_admin,
                 search_company_user,
-                create_money_capital,
+                create_expense,
                 delete_company,
             ],
         )

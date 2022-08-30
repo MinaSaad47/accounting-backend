@@ -7,10 +7,10 @@ use crate::database::rows;
 
 #[derive(Serialize, Deserialize, FromRow, Debug, Clone)]
 #[serde(crate = "rocket::serde")]
-pub struct MoneyCapital {
+pub struct Expense {
     pub company: String,
     pub user: String,
     #[serde(flatten)]
-    pub money_capital: rows::MoneyCapital,
+    pub expense: rows::Expense,
 }
 

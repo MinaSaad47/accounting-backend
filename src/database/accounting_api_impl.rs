@@ -27,7 +27,7 @@ impl From<sqlx::Error> for accounting_api::Error {
 impl AcountingApi for super::DatabaseAccountingApi {
     type Company = models::Company;
     type User = models::User;
-    type MoneyCapital = models::MoneyCapital;
+    type Expense = models::Expense;
     type Error = accounting_api::Error;
 
     async fn create_company(
@@ -92,7 +92,7 @@ impl AcountingApi for super::DatabaseAccountingApi {
         Ok(models::Company {
             company,
             funders,
-            money_capitals: None,
+            expenses: None,
         })
     }
 
@@ -104,7 +104,7 @@ impl AcountingApi for super::DatabaseAccountingApi {
 
         let company = &c.company;
         let mut funders = mem::take(&mut c.funders);
-        let mut money_capitals = mem::take(&mut c.money_capitals);
+        let mut expenses = mem::take(&mut c.expenses);
 
         let company = sqlx::query_as!(
             rows::Company,
@@ -126,15 +126,14 @@ impl AcountingApi for super::DatabaseAccountingApi {
                     accounts = $12,
                     joining_date = $13,
                     natural_id = $14,
-                    money_capital = $15,
-                    record_side = $16,
-                    record_number = $17,
-                    user_name = $18,
-                    passport = $19,
-                    verification_code = $20,
-                    email = $21
+                    record_side = $15,
+                    record_number = $16,
+                    user_name = $17,
+                    passport = $18,
+                    verification_code = $19,
+                    email = $20
                 WHERE
-                    id = $22
+                    id = $21
                 RETURNING
                     id AS "id: _",
                     commercial_feature,
@@ -151,7 +150,6 @@ impl AcountingApi for super::DatabaseAccountingApi {
                     accounts,
                     joining_date,
                     natural_id,
-                    money_capital,
                     record_side,
                     record_number,
                     user_name,
@@ -173,7 +171,6 @@ impl AcountingApi for super::DatabaseAccountingApi {
             &company.accounts,
             &company.joining_date as _,
             &company.natural_id as _,
-            &company.money_capital as _,
             &company.record_side as _,
             &company.record_number as _,
             &company.user_name,
@@ -224,11 +221,11 @@ impl AcountingApi for super::DatabaseAccountingApi {
             }
         }
 
-        for money_capital in money_capitals.iter_mut().flatten() {
-            let opt_money_capital = sqlx::query_as!(
-                rows::MoneyCapital,
+        for expense in expenses.iter_mut().flatten() {
+            let opt_expense = sqlx::query_as!(
+                rows::Expense,
                 r#"
-                    UPDATE money_capitals
+                    UPDATE expenses
                     SET
                         value = $2
                     WHERE
@@ -241,17 +238,17 @@ impl AcountingApi for super::DatabaseAccountingApi {
                         user_id AS "user_id!: _",
                         company_id AS "company_id!: _"
                 "#,
-                &money_capital.id as _,
-                &money_capital.value,
+                &expense.id as _,
+                &expense.value,
             )
             .fetch_optional(&mut transaction)
             .await?;
-            if opt_money_capital.is_none() {
-                *money_capital = sqlx::query_as!(
-                    rows::MoneyCapital,
+            if opt_expense.is_none() {
+                *expense = sqlx::query_as!(
+                    rows::Expense,
                     r#"
                         INSERT INTO
-                            money_capitals (
+                            expenses (
                                 value, description, time, company_id
                             )
                         VALUES (
@@ -265,8 +262,8 @@ impl AcountingApi for super::DatabaseAccountingApi {
                         user_id AS "user_id!: _",
                         company_id AS "company_id!: _"
                     "#,
-                    &money_capital.value,
-                    &money_capital.description,
+                    &expense.value,
+                    &expense.description,
                     Utc::now(),
                     &company.id as _,
                 )
@@ -279,7 +276,7 @@ impl AcountingApi for super::DatabaseAccountingApi {
         Ok(models::Company {
             company,
             funders,
-            money_capitals,
+            expenses,
         })
     }
 
@@ -303,7 +300,6 @@ impl AcountingApi for super::DatabaseAccountingApi {
                     accounts,
                     joining_date,
                     natural_id,
-                    money_capital,
                     record_side,
                     record_number,
                     user_name,
@@ -345,8 +341,8 @@ impl AcountingApi for super::DatabaseAccountingApi {
                 .fetch_all(&self.db)
                 .await
                 .expect("every company must have at least one funder");
-                let money_capitals = sqlx::query_as!(
-                    rows::MoneyCapital,
+                let expenses = sqlx::query_as!(
+                    rows::Expense,
                     r#"
                         SELECT
                             id AS "id: _",
@@ -356,7 +352,7 @@ impl AcountingApi for super::DatabaseAccountingApi {
                             user_id AS "user_id!: _",
                             company_id AS "company_id!: _"
                         FROM
-                            money_capitals
+                            expenses
                         WHERE
                             company_id = $1
                     "#,
@@ -368,7 +364,7 @@ impl AcountingApi for super::DatabaseAccountingApi {
                 models::Company {
                     company: c,
                     funders,
-                    money_capitals,
+                    expenses,
                 }
             }))
             .await;
@@ -502,13 +498,13 @@ impl AcountingApi for super::DatabaseAccountingApi {
         Ok(models::User { user })
     }
 
-    async fn get_money_capitals(
+    async fn get_expenses(
         &self,
         user_id: Option<i64>,
         company_id: Option<i64>,
-    ) -> Result<Vec<Self::MoneyCapital>, Self::Error> {
-        let money_capitals = sqlx::query_as!(
-            rows::MoneyCapital,
+    ) -> Result<Vec<Self::Expense>, Self::Error> {
+        let expenses = sqlx::query_as!(
+            rows::Expense,
             r#"
                 SELECT
                     id AS "id: _",
@@ -518,7 +514,7 @@ impl AcountingApi for super::DatabaseAccountingApi {
                     user_id AS "user_id!: _",
                     company_id AS "company_id!: _"
                 FROM
-                    money_capitals
+                    expenses
                 WHERE
                     (user_id = $1 OR $1 IS NULL) AND (company_id = $2 OR $2 IS NULL)
             "#,
@@ -528,8 +524,8 @@ impl AcountingApi for super::DatabaseAccountingApi {
         .fetch_all(&self.db)
         .await?;
 
-        let money_capitals =
-            future::join_all(money_capitals.into_iter().map(|money_capital| async {
+        let expenses =
+            future::join_all(expenses.into_iter().map(|expense| async {
                 let user = sqlx::query!(
                     r#"
                     SELECT
@@ -539,11 +535,11 @@ impl AcountingApi for super::DatabaseAccountingApi {
                     WHERE
                         id = $1
                 "#,
-                    money_capital.user_id,
+                    expense.user_id,
                 )
                 .fetch_one(&self.db)
                 .await
-                .expect("user name from money_capital")
+                .expect("user name from expense")
                 .name;
 
                 let company = sqlx::query!(
@@ -555,31 +551,31 @@ impl AcountingApi for super::DatabaseAccountingApi {
                     WHERE
                         id = $1
                 "#,
-                    money_capital.company_id,
+                    expense.company_id,
                 )
                 .fetch_one(&self.db)
                 .await
-                .expect("company commercial_feature from money_capital")
+                .expect("company commercial_feature from expense")
                 .commercial_feature;
 
-                models::MoneyCapital {
-                    money_capital,
+                models::Expense {
+                    expense,
                     user,
                     company,
                 }
             }))
             .await;
 
-        Ok(money_capitals)
+        Ok(expenses)
     }
 
-    async fn create_money_capital(
+    async fn create_expense(
         &self,
         user_id: i64,
         company_id: i64,
         value: f64,
         description: &str,
-    ) -> Result<Self::MoneyCapital, Self::Error> {
+    ) -> Result<Self::Expense, Self::Error> {
         let user = sqlx::query!(
             r#"
                 SELECT
@@ -628,11 +624,11 @@ impl AcountingApi for super::DatabaseAccountingApi {
         .execute(&mut transaction)
         .await?;
 
-        let money_capital = sqlx::query_as!(
-            rows::MoneyCapital,
+        let expense = sqlx::query_as!(
+            rows::Expense,
             r#"
                 INSERT INTO
-                    money_capitals (user_id, company_id, value, description)
+                    expenses (user_id, company_id, value, description)
                 VALUES
                     ($1, $2, $3, $4)
                 RETURNING
@@ -652,18 +648,18 @@ impl AcountingApi for super::DatabaseAccountingApi {
         .await?;
 
         transaction.commit().await?;
-        Ok(Self::MoneyCapital {
+        Ok(Self::Expense {
             user: user.name,
             company: company.commercial_feature,
-            money_capital,
+            expense,
         })
     }
-    async fn delete_money_capital(&self, id: i64) -> Result<(), Self::Error> {
+    async fn delete_expense(&self, id: i64) -> Result<(), Self::Error> {
         let mut transaction = self.db.begin().await?;
         let result = sqlx::query!(
             r#"
                 DELETE FROM
-                    money_capitals
+                    expenses
                 WHERE
                     id = $1
                 RETURNING

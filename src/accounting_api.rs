@@ -18,7 +18,7 @@ pub enum Error {
 pub trait AcountingApi {
     type Company;
     type User;
-    type MoneyCapital;
+    type Expense;
     type Error;
     async fn create_company(&self, c: &Self::Company) -> Result<Self::Company, Error>;
     async fn update_company(&self, c: &mut Self::Company) -> Result<Self::Company, Error>;
@@ -34,19 +34,19 @@ pub trait AcountingApi {
     async fn login_user(&self, u: &Self::User) -> Result<Self::User, Error>;
     async fn delete_user(&self, id: i64) -> Result<(), Error>;
 
-    async fn get_money_capitals(
+    async fn get_expenses(
         &self,
         user_id: Option<i64>,
         company_id: Option<i64>,
-    ) -> Result<Vec<Self::MoneyCapital>, Error>;
-    async fn create_money_capital(
+    ) -> Result<Vec<Self::Expense>, Error>;
+    async fn create_expense(
         &self,
         user_id: i64,
         company_id: i64,
         value: f64,
         description: &str,
-    ) -> Result<Self::MoneyCapital, Error>;
-    async fn delete_money_capital(
+    ) -> Result<Self::Expense, Error>;
+    async fn delete_expense(
         &self,
         id: i64,
     ) -> Result<(), Error>;
