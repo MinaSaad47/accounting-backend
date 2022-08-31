@@ -577,10 +577,9 @@ impl AcountingApi for super::DatabaseAccountingApi {
         .fetch_all(&self.db)
         .await?;
 
-        let expenses =
-            future::join_all(expenses.into_iter().map(|expense| async {
-                let user = sqlx::query!(
-                    r#"
+        let expenses = future::join_all(expenses.into_iter().map(|expense| async {
+            let user = sqlx::query!(
+                r#"
                     SELECT
                         name
                     FROM
@@ -588,15 +587,15 @@ impl AcountingApi for super::DatabaseAccountingApi {
                     WHERE
                         id = $1
                 "#,
-                    expense.user_id,
-                )
-                .fetch_one(&self.db)
-                .await
-                .expect("user name from expense")
-                .name;
+                expense.user_id,
+            )
+            .fetch_one(&self.db)
+            .await
+            .expect("user name from expense")
+            .name;
 
-                let company = sqlx::query!(
-                    r#"
+            let company = sqlx::query!(
+                r#"
                     SELECT
                         commercial_feature
                     FROM
@@ -604,20 +603,20 @@ impl AcountingApi for super::DatabaseAccountingApi {
                     WHERE
                         id = $1
                 "#,
-                    expense.company_id,
-                )
-                .fetch_one(&self.db)
-                .await
-                .expect("company commercial_feature from expense")
-                .commercial_feature;
+                expense.company_id,
+            )
+            .fetch_one(&self.db)
+            .await
+            .expect("company commercial_feature from expense")
+            .commercial_feature;
 
-                models::Expense {
-                    expense,
-                    user,
-                    company,
-                }
-            }))
-            .await;
+            models::Expense {
+                expense,
+                user,
+                company,
+            }
+        }))
+        .await;
 
         Ok(expenses)
     }
@@ -766,10 +765,9 @@ impl AcountingApi for super::DatabaseAccountingApi {
         .fetch_all(&self.db)
         .await?;
 
-        let incomes =
-            future::join_all(incomes.into_iter().map(|income| async {
-                let admin = sqlx::query!(
-                    r#"
+        let incomes = future::join_all(incomes.into_iter().map(|income| async {
+            let admin = sqlx::query!(
+                r#"
                     SELECT
                         name
                     FROM
@@ -777,15 +775,15 @@ impl AcountingApi for super::DatabaseAccountingApi {
                     WHERE
                         id = $1
                 "#,
-                    income.admin_id,
-                )
-                .fetch_one(&self.db)
-                .await
-                .expect("user name from income")
-                .name;
+                income.admin_id,
+            )
+            .fetch_one(&self.db)
+            .await
+            .expect("user name from income")
+            .name;
 
-                let company = sqlx::query!(
-                    r#"
+            let company = sqlx::query!(
+                r#"
                     SELECT
                         commercial_feature
                     FROM
@@ -793,20 +791,20 @@ impl AcountingApi for super::DatabaseAccountingApi {
                     WHERE
                         id = $1
                 "#,
-                    income.company_id,
-                )
-                .fetch_one(&self.db)
-                .await
-                .expect("company commercial_feature from income")
-                .commercial_feature;
+                income.company_id,
+            )
+            .fetch_one(&self.db)
+            .await
+            .expect("company commercial_feature from income")
+            .commercial_feature;
 
-                models::Income {
-                    income,
-                    admin,
-                    company,
-                }
-            }))
-            .await;
+            models::Income {
+                income,
+                admin,
+                company,
+            }
+        }))
+        .await;
 
         Ok(incomes)
     }
@@ -821,7 +819,7 @@ impl AcountingApi for super::DatabaseAccountingApi {
         let admin = sqlx::query!(
             r#"
                 SELECT
-                    id, value, name
+                    id, name
                 FROM
                     users
                 WHERE
@@ -831,10 +829,6 @@ impl AcountingApi for super::DatabaseAccountingApi {
         )
         .fetch_one(&self.db)
         .await?;
-
-        if value > admin.value {
-            return Err(Self::Error::NotEnoughUserValue(value, admin.value));
-        }
 
         let company = sqlx::query!(
             r#"
@@ -851,20 +845,6 @@ impl AcountingApi for super::DatabaseAccountingApi {
         .await?;
 
         let mut transaction = self.db.begin().await?;
-
-        sqlx::query!(
-            r#"
-                UPDATE
-                    users
-                SET
-                    value = $2
-                WHERE id = $1
-            "#,
-            admin.id,
-            admin.value - value,
-        )
-        .execute(&mut transaction)
-        .await?;
 
         let income = sqlx::query_as!(
             rows::Income,
@@ -898,31 +878,14 @@ impl AcountingApi for super::DatabaseAccountingApi {
     }
     async fn delete_income(&self, id: i64) -> Result<(), Self::Error> {
         let mut transaction = self.db.begin().await?;
-        let result = sqlx::query!(
+        sqlx::query!(
             r#"
                 DELETE FROM
                     incomes
                 WHERE
                     id = $1
-                RETURNING
-                    admin_id, value
             "#,
             id
-        )
-        .fetch_one(&mut transaction)
-        .await?;
-
-        sqlx::query!(
-            r#"
-                UPDATE
-                    users
-                SET
-                    value = value + $2
-                WHERE
-                    id = $1
-            "#,
-            result.admin_id,
-            result.value,
         )
         .execute(&mut transaction)
         .await?;

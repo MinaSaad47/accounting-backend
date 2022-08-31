@@ -11,7 +11,7 @@ use crate::{
 #[allow(dead_code)]
 pub struct GetParam {
     company: Option<Company>,
-    user: Option<User>,
+    admin: Option<User>,
 }
 
 #[derive(Debug, FromForm, PartialEq)]
@@ -33,7 +33,7 @@ pub async fn get_incomes(
 ) -> ResponseResult<Vec<models::Income>> {
     rocket::debug!("{param:?}");
     let incomes = storage
-        .get_incomes(param.user.map(|u| u.id), param.company.map(|c| c.id))
+        .get_incomes(param.admin.map(|u| u.id), param.company.map(|c| c.id))
         .await?;
     Ok(ResponseEnum::ok(incomes, "تم ايجاد رؤؤوس اموال".into()))
 }

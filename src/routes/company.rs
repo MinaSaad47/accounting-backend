@@ -84,9 +84,9 @@ pub async fn create_income(
     income: Json<rows::Income>,
     storage: &State<DatabaseAccountingApi>,
     ag: AGuard,
-) -> ResponseResult<models::Expense> {
-    let expense = storage
-        .create_expense(
+) -> ResponseResult<models::Income> {
+    let income = storage
+        .create_income(
             ag.0,
             company_id,
             income.value,
@@ -94,7 +94,7 @@ pub async fn create_income(
         )
         .await?;
 
-    Ok(ResponseEnum::created(expense, "تم اضافة رأس مال".into()))
+    Ok(ResponseEnum::created(income, "تم اضافة رأس مال".into()))
 }
 
 #[delete("/<id>")]
