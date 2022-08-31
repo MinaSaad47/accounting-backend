@@ -74,6 +74,29 @@ pub async fn create_expense(
     Ok(ResponseEnum::created(expense, "تم اضافة رأس مال".into()))
 }
 
+#[post(
+    "/<company_id>/incomes",
+    format = "application/json",
+    data = "<income>"
+)]
+pub async fn create_income(
+    company_id: i64,
+    income: Json<rows::Income>,
+    storage: &State<DatabaseAccountingApi>,
+    ag: AGuard,
+) -> ResponseResult<models::Expense> {
+    let expense = storage
+        .create_expense(
+            ag.0,
+            company_id,
+            income.value,
+            &income.description,
+        )
+        .await?;
+
+    Ok(ResponseEnum::created(expense, "تم اضافة رأس مال".into()))
+}
+
 #[delete("/<id>")]
 pub async fn delete_company(
     id: i64,
@@ -94,6 +117,7 @@ pub fn stage() -> AdHoc {
                 search_company_admin,
                 search_company_user,
                 create_expense,
+                create_income,
                 delete_company,
             ],
         )

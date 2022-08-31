@@ -28,6 +28,7 @@ impl AcountingApi for super::DatabaseAccountingApi {
     type Company = models::Company;
     type User = models::User;
     type Expense = models::Expense;
+    type Income = models::Income;
     type Error = accounting_api::Error;
 
     async fn create_company(
@@ -498,6 +499,58 @@ impl AcountingApi for super::DatabaseAccountingApi {
         Ok(models::User { user })
     }
 
+    async fn get_user(&self, id: i64) -> Result<Self::User, Self::Error> {
+        let user = sqlx::query_as!(
+            rows::User,
+            r#"
+                SELECT
+                    id AS "id: _",
+                    name,
+                    password,
+                    value,
+                    is_admin
+                FROM
+                    users
+                WHERE
+                    id = $1
+            "#,
+            id,
+        )
+        .fetch_one(&self.db)
+        .await?;
+        Ok(models::User { user })
+    }
+
+    async fn delete_company(&self, id: i64) -> Result<(), Self::Error> {
+        sqlx::query!(
+            r#"
+                DELETE FROM
+                    companies
+                WHERE
+                    id = $1
+            "#,
+            id,
+        )
+        .execute(&self.db)
+        .await?;
+        Ok(())
+    }
+
+    async fn delete_user(&self, id: i64) -> Result<(), Self::Error> {
+        sqlx::query!(
+            r#"
+                DELETE FROM
+                    users
+                WHERE
+                    id = $1
+            "#,
+            id,
+        )
+        .execute(&self.db)
+        .await?;
+        Ok(())
+    }
+
     async fn get_expenses(
         &self,
         user_id: Option<i64>,
@@ -687,55 +740,193 @@ impl AcountingApi for super::DatabaseAccountingApi {
         transaction.commit().await?;
         Ok(())
     }
-    async fn get_user(&self, id: i64) -> Result<Self::User, Self::Error> {
-        let user = sqlx::query_as!(
-            rows::User,
+    async fn get_incomes(
+        &self,
+        admin_id: Option<i64>,
+        company_id: Option<i64>,
+    ) -> Result<Vec<Self::Income>, Self::Error> {
+        let incomes = sqlx::query_as!(
+            rows::Income,
             r#"
                 SELECT
                     id AS "id: _",
-                    name,
-                    password,
                     value,
-                    is_admin
+                    description,
+                    time AS "time?: _",
+                    admin_id AS "admin_id!: _",
+                    company_id AS "company_id!: _"
+                FROM
+                    incomes
+                WHERE
+                    (admin_id = $1 OR $1 IS NULL) AND (company_id = $2 OR $2 IS NULL)
+            "#,
+            admin_id,
+            company_id,
+        )
+        .fetch_all(&self.db)
+        .await?;
+
+        let incomes =
+            future::join_all(incomes.into_iter().map(|income| async {
+                let admin = sqlx::query!(
+                    r#"
+                    SELECT
+                        name
+                    FROM
+                        users
+                    WHERE
+                        id = $1
+                "#,
+                    income.admin_id,
+                )
+                .fetch_one(&self.db)
+                .await
+                .expect("user name from income")
+                .name;
+
+                let company = sqlx::query!(
+                    r#"
+                    SELECT
+                        commercial_feature
+                    FROM
+                        companies
+                    WHERE
+                        id = $1
+                "#,
+                    income.company_id,
+                )
+                .fetch_one(&self.db)
+                .await
+                .expect("company commercial_feature from income")
+                .commercial_feature;
+
+                models::Income {
+                    income,
+                    admin,
+                    company,
+                }
+            }))
+            .await;
+
+        Ok(incomes)
+    }
+
+    async fn create_income(
+        &self,
+        admin_id: i64,
+        company_id: i64,
+        value: f64,
+        description: &str,
+    ) -> Result<Self::Income, Self::Error> {
+        let admin = sqlx::query!(
+            r#"
+                SELECT
+                    id, value, name
                 FROM
                     users
                 WHERE
                     id = $1
             "#,
-            id,
+            &admin_id
         )
         .fetch_one(&self.db)
         .await?;
-        Ok(models::User { user })
-    }
 
-    async fn delete_company(&self, id: i64) -> Result<(), Self::Error> {
-        sqlx::query!(
+        if value > admin.value {
+            return Err(Self::Error::NotEnoughUserValue(value, admin.value));
+        }
+
+        let company = sqlx::query!(
             r#"
-                DELETE FROM
+                SELECT
+                    id, commercial_feature
+                FROM
                     companies
                 WHERE
                     id = $1
             "#,
-            id,
+            company_id,
         )
-        .execute(&self.db)
+        .fetch_one(&self.db)
         .await?;
-        Ok(())
-    }
 
-    async fn delete_user(&self, id: i64) -> Result<(), Self::Error> {
+        let mut transaction = self.db.begin().await?;
+
         sqlx::query!(
             r#"
-                DELETE FROM
+                UPDATE
                     users
+                SET
+                    value = $2
+                WHERE id = $1
+            "#,
+            admin.id,
+            admin.value - value,
+        )
+        .execute(&mut transaction)
+        .await?;
+
+        let income = sqlx::query_as!(
+            rows::Income,
+            r#"
+                INSERT INTO
+                    incomes (admin_id, company_id, value, description)
+                VALUES
+                    ($1, $2, $3, $4)
+                RETURNING
+                    id AS "id?: _",
+                    admin_id AS "admin_id!: _",
+                    company_id AS "company_id!: _",
+                    value,
+                    description,
+                    time AS "time?: _"
+            "#,
+            admin.id,
+            company.id,
+            value,
+            description,
+        )
+        .fetch_one(&mut transaction)
+        .await?;
+
+        transaction.commit().await?;
+        Ok(Self::Income {
+            admin: admin.name,
+            company: company.commercial_feature,
+            income,
+        })
+    }
+    async fn delete_income(&self, id: i64) -> Result<(), Self::Error> {
+        let mut transaction = self.db.begin().await?;
+        let result = sqlx::query!(
+            r#"
+                DELETE FROM
+                    incomes
+                WHERE
+                    id = $1
+                RETURNING
+                    admin_id, value
+            "#,
+            id
+        )
+        .fetch_one(&mut transaction)
+        .await?;
+
+        sqlx::query!(
+            r#"
+                UPDATE
+                    users
+                SET
+                    value = value + $2
                 WHERE
                     id = $1
             "#,
-            id,
+            result.admin_id,
+            result.value,
         )
-        .execute(&self.db)
+        .execute(&mut transaction)
         .await?;
+        transaction.commit().await?;
         Ok(())
     }
 }

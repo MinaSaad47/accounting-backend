@@ -14,4 +14,6 @@ pub struct Income {
     pub time: Option<DateTime<Utc>>,
     #[serde(default)]
     pub company_id: i64,
+    #[serde(default)]
+    pub admin_id: i64,
 }
