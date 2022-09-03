@@ -1,7 +1,7 @@
-use std::mem;
+use std::{fs, io, mem, path::PathBuf};
 
 use crate::accounting_api::{self, AcountingApi};
-use rocket::{async_trait, futures::future};
+use rocket::{async_trait, data::DataStream, futures::future};
 
 use chrono::Utc;
 use sqlx::postgres::PgDatabaseError;
@@ -23,12 +23,20 @@ impl From<sqlx::Error> for accounting_api::Error {
     }
 }
 
+impl From<io::Error> for accounting_api::Error {
+    fn from(error: io::Error) -> Self {
+        rocket::error!("[Database] {error:#?}");
+        Self::Other(error.to_string().into())
+    }
+}
+
 #[async_trait]
 impl AcountingApi for super::DatabaseAccountingApi {
     type Company = models::Company;
     type User = models::User;
     type Expense = models::Expense;
     type Income = models::Income;
+    type Document = models::Document;
     type Error = accounting_api::Error;
 
     async fn create_company(
@@ -891,5 +899,70 @@ impl AcountingApi for super::DatabaseAccountingApi {
         .await?;
         transaction.commit().await?;
         Ok(())
+    }
+
+    async fn create_document(
+        &self,
+        company_id: i64,
+        name: &str,
+        data: DataStream<'_>,
+    ) -> Result<Self::Document, Self::Error> {
+        let mut transaction = self.db.begin().await?;
+        let document = sqlx::query_as!(
+            rows::Document,
+            r#"
+                INSERT INTO
+                    documents (name, company_id)
+                VALUES
+                    ($1, $2)
+                RETURNING 
+                    *
+            "#,
+            name,
+            company_id,
+        )
+        .fetch_one(&mut transaction)
+        .await?;
+
+        let document: models::Document = document.into();
+        let path = PathBuf::from("db").join("documents").join(&document.path);
+        let directory = path.parent().expect("company id");
+        rocket::info!("checking directory: {:?}", directory);
+        if !directory.exists() {
+            rocket::warn!("directory does not exists: {:?}", directory);
+            rocket::info!("creating directory: {:?}", directory);
+            fs::create_dir_all(directory)?;
+        } else {
+            rocket::info!("found directory: {:?}", directory);
+        }
+
+        data.into_file(path).await?;
+
+        transaction.commit().await?;
+        Ok(document)
+    }
+
+    async fn get_documents(&self, company_id: i64) -> Result<Vec<Self::Document>, Self::Error> {
+        let docuemnts = sqlx::query_as!(
+            rows::Document,
+            r#"
+                SELECT
+                    *
+                FROM
+                    documents
+                WHERE
+                    company_id = $1
+            "#,
+            company_id,
+        )
+        .fetch_all(&self.db)
+        .await?;
+
+        let documents: Vec<models::Document> = docuemnts
+            .into_iter()
+            .map(|doc| models::Document::from(doc))
+            .collect();
+
+        Ok(documents)
     }
 }

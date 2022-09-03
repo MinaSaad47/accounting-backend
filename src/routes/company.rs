@@ -1,4 +1,7 @@
-use rocket::{delete, fairing::AdHoc, get, post, put, routes, serde::json::Json, State};
+use rocket::{
+    data::ToByteUnit, delete, fairing::AdHoc, get, post, put, routes, serde::json::Json, Data,
+    State,
+};
 
 use crate::{
     accounting_api::AcountingApi,
@@ -63,12 +66,7 @@ pub async fn create_expense(
     ug: UGuard,
 ) -> ResponseResult<models::Expense> {
     let expense = storage
-        .create_expense(
-            ug.0,
-            company_id,
-            expense.value,
-            &expense.description,
-        )
+        .create_expense(ug.0, company_id, expense.value, &expense.description)
         .await?;
 
     Ok(ResponseEnum::created(expense, "تم اضافة رأس مال".into()))
@@ -86,12 +84,7 @@ pub async fn create_income(
     ag: AGuard,
 ) -> ResponseResult<models::Income> {
     let income = storage
-        .create_income(
-            ag.0,
-            company_id,
-            income.value,
-            &income.description,
-        )
+        .create_income(ag.0, company_id, income.value, &income.description)
         .await?;
 
     Ok(ResponseEnum::created(income, "تم اضافة رأس مال".into()))
@@ -107,6 +100,33 @@ pub async fn delete_company(
     Ok(ResponseEnum::ok((), "تم حذف الشركة".into()))
 }
 
+#[post("/<company_id>/documents/<file_name>", data = "<document>")]
+async fn upload_document(
+    company_id: i64,
+    file_name: &str,
+    document: Data<'_>,
+    storage: &State<DatabaseAccountingApi>,
+) -> ResponseResult<models::Document> {
+    let document = storage
+        .create_document(company_id, file_name, document.open(128.kilobytes()))
+        .await?;
+
+    Ok(ResponseEnum::created(
+        document,
+        "تم انشاء مستند بنجاح".into(),
+    ))
+}
+
+#[get("/<company_id>/documents")]
+async fn get_documents(
+    company_id: i64,
+    storage: &State<DatabaseAccountingApi>,
+    _ag: AGuard,
+) -> ResponseResult<Vec<models::Document>> {
+    let documents = storage.get_documents(company_id).await?;
+    Ok(ResponseEnum::ok(documents, "تم ايجاد مستندات بنجاح".into()))
+}
+
 pub fn stage() -> AdHoc {
     AdHoc::on_ignite("companies stage", |rocket| async {
         rocket.mount(
@@ -119,6 +139,8 @@ pub fn stage() -> AdHoc {
                 create_expense,
                 create_income,
                 delete_company,
+                upload_document,
+                get_documents,
             ],
         )
     })

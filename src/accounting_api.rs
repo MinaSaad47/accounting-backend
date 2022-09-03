@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use rocket::async_trait;
+use rocket::{async_trait, data::DataStream};
 
 use thiserror::Error;
 
@@ -20,6 +20,7 @@ pub trait AcountingApi {
     type User;
     type Expense;
     type Income;
+    type Document;
     type Error;
 
     async fn create_company(&self, c: &Self::Company) -> Result<Self::Company, Error>;
@@ -60,10 +61,7 @@ pub trait AcountingApi {
         description: &str,
     ) -> Result<Self::Expense, Error>;
 
-    async fn delete_expense(
-        &self,
-        id: i64,
-    ) -> Result<(), Error>;
+    async fn delete_expense(&self, id: i64) -> Result<(), Error>;
 
     async fn get_incomes(
         &self,
@@ -79,8 +77,14 @@ pub trait AcountingApi {
         description: &str,
     ) -> Result<Self::Income, Error>;
 
-    async fn delete_income(
+    async fn delete_income(&self, id: i64) -> Result<(), Error>;
+
+    async fn create_document(
         &self,
-        id: i64,
-    ) -> Result<(), Error>;
+        company_id: i64,
+        name: &str,
+        data: DataStream<'_>,
+    ) -> Result<Self::Document, Error>;
+
+    async fn get_documents(&self, company_id: i64) -> Result<Vec<Self::Document>, Error>;
 }
