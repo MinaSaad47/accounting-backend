@@ -37,6 +37,7 @@ impl AcountingApi for super::LocalStorageAccountingApi {
     type Expense = models::Expense;
     type Income = models::Income;
     type Document = models::Document;
+    type Funder = models::Funder;
     type Error = accounting_api::Error;
 
     async fn create_company(
@@ -980,6 +981,75 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         .await?;
 
         self.fs.write().await.delete(document.to_path_buf()).await?;
+
+        transaction.commit().await?;
+        Ok(())
+    }
+
+    async fn create_funder(
+        &self,
+        company_id: i64,
+        f: &Self::Funder,
+    ) -> Result<Self::Funder, Self::Error> {
+        let mut transaction = self.db.begin().await?;
+
+        let funder = sqlx::query_as!(
+            rows::Funder,
+            r#"
+                INSERT INTO
+                    funders (
+                        name, company_id
+                    )
+                VALUES (
+                    $1, $2
+                )
+                RETURNING
+                    id AS "id?: _",
+                    name,
+                    company_id AS "company_id!: _"
+            "#,
+            f.as_ref().name as _,
+            company_id as _,
+        )
+        .fetch_one(&mut transaction)
+        .await?;
+        transaction.commit().await?;
+        Ok(funder.into())
+    }
+    async fn get_funders(&self, company_id: i64) -> Result<Vec<Self::Funder>, Self::Error> {
+        let funders = sqlx::query_as!(
+            rows::Funder,
+            r#"
+                SELECT
+                    id AS "id?: _",
+                    name,
+                    company_id AS "company_id!: _"
+                FROM
+                    funders
+                WHERE
+                    company_id = $1
+            "#,
+            company_id,
+        )
+        .fetch_all(&self.db)
+        .await?;
+
+        Ok(funders.into_iter().map(|f| f.into()).collect())
+    }
+    async fn delete_funder(&self, id: i64) -> Result<(), Self::Error> {
+        let mut transaction = self.db.begin().await?;
+
+        sqlx::query!(
+            r#"
+                DELETE FROM
+                    funders
+                WHERE
+                    id = $1
+            "#,
+            id,
+        )
+        .execute(&mut transaction)
+        .await?;
 
         transaction.commit().await?;
         Ok(())

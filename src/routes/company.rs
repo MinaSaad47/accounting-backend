@@ -131,6 +131,29 @@ async fn get_documents(
     Ok(ResponseEnum::ok(documents, "تم ايجاد مستندات بنجاح".into()))
 }
 
+#[post(
+    "/<company_id>/funders",
+    format = "application/json",
+    data = "<funder>"
+)]
+async fn create_funder(
+    company_id: i64,
+    funder: Json<models::Funder>,
+    storage: &State<LocalStorageAccountingApi>,
+) -> ResponseResult<models::Funder> {
+    let funder = storage.create_funder(company_id, &funder).await?;
+    Ok(ResponseEnum::created(funder, "تم اضافة ممول ببنجاح".into()))
+}
+
+#[get("/<company_id>/funders")]
+async fn get_funders(
+    company_id: i64,
+    storage: &State<LocalStorageAccountingApi>,
+) -> ResponseResult<Vec<models::Funder>> {
+    let funder = storage.get_funders(company_id).await?;
+    Ok(ResponseEnum::created(funder, "تم اضافة ممول ببنجاح".into()))
+}
+
 pub fn stage() -> AdHoc {
     AdHoc::on_ignite("companies stage", |rocket| async {
         rocket.mount(
@@ -145,6 +168,8 @@ pub fn stage() -> AdHoc {
                 delete_company,
                 upload_document,
                 get_documents,
+                create_funder,
+                get_funders,
             ],
         )
     })

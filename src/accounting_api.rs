@@ -21,6 +21,7 @@ pub trait AcountingApi {
     type Expense;
     type Income;
     type Document;
+    type Funder;
     type Error;
 
     async fn create_company(&self, c: &Self::Company) -> Result<Self::Company, Error>;
@@ -32,6 +33,10 @@ pub trait AcountingApi {
     async fn pay_company(&self, c: &Self::Company, v: f64) -> Result<Self::Company, Error>;
 
     async fn delete_company(&self, id: i64) -> Result<(), Error>;
+
+    async fn create_funder(&self, company_id: i64, f: &Self::Funder) -> Result<Self::Funder, Error>;
+    async fn get_funders(&self, company_id: i64) -> Result<Vec<Self::Funder>, Error>;
+    async fn delete_funder(&self, id: i64) -> Result<(), Error>;
 
     async fn create_user(&self, u: &Self::User) -> Result<Self::User, Error>;
 
