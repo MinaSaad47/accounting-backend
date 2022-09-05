@@ -6,14 +6,14 @@ use rocket::{get, patch, post, routes, State, delete};
 
 use crate::accounting_api::AcountingApi;
 use crate::auth::{AGuard, ApiToken, UGuard};
-use crate::database::{models, DatabaseAccountingApi};
+use crate::local_storage::{models, LocalStorageAccountingApi};
 
 use crate::types::response::{ResponseEnum, ResponseResult};
 
 #[post("/login", format = "application/json", data = "<user>")]
 pub async fn login_user(
     user: Json<models::User>,
-    storage: &State<DatabaseAccountingApi>,
+    storage: &State<LocalStorageAccountingApi>,
 ) -> ResponseResult<ApiToken> {
     let user = storage.login_user(&user).await?;
     let c = &user.user;
@@ -24,7 +24,7 @@ pub async fn login_user(
 #[post("/", format = "application/json", data = "<user>")]
 pub async fn create_user(
     user: Json<models::User>,
-    storage: &State<DatabaseAccountingApi>,
+    storage: &State<LocalStorageAccountingApi>,
     _ag: AGuard,
 ) -> ResponseResult<models::User> {
     let user = storage.create_user(&user).await?;
@@ -36,7 +36,7 @@ pub async fn create_user(
 
 #[get("/")]
 pub async fn get_users_admin(
-    storage: &State<DatabaseAccountingApi>,
+    storage: &State<LocalStorageAccountingApi>,
     _ag: AGuard,
 ) -> ResponseResult<Vec<models::User>> {
     let users = storage.get_users().await?;
@@ -45,7 +45,7 @@ pub async fn get_users_admin(
 
 #[get("/", rank = 2)]
 pub async fn get_users_user(
-    storage: &State<DatabaseAccountingApi>,
+    storage: &State<LocalStorageAccountingApi>,
     _ug: UGuard,
 ) -> ResponseResult<Vec<models::User>> {
     let users = storage.get_users().await?;
@@ -54,7 +54,7 @@ pub async fn get_users_user(
 
 #[get("/current")]
 pub async fn get_current_user(
-    storage: &State<DatabaseAccountingApi>,
+    storage: &State<LocalStorageAccountingApi>,
     ug: UGuard,
 ) -> ResponseResult<models::User> {
     let user = storage.get_user(ug.0).await?;
@@ -63,7 +63,7 @@ pub async fn get_current_user(
 
 #[get("/current", rank = 2)]
 pub async fn get_current_admin(
-    storage: &State<DatabaseAccountingApi>,
+    storage: &State<LocalStorageAccountingApi>,
     ag: AGuard,
 ) -> ResponseResult<models::User> {
     let user = storage.get_user(ag.0).await?;
@@ -80,7 +80,7 @@ pub struct Value {
 pub async fn pay_user(
     id: i64,
     value: Json<Value>,
-    storage: &State<DatabaseAccountingApi>,
+    storage: &State<LocalStorageAccountingApi>,
     _ag: AGuard,
 ) -> ResponseResult<models::User> {
     let user = storage.pay_user(id, value.value).await?;
@@ -90,7 +90,7 @@ pub async fn pay_user(
 #[delete("/<id>")]
 pub async fn delete_user(
     id: i64,
-    storage: &State<DatabaseAccountingApi>,
+    storage: &State<LocalStorageAccountingApi>,
     _ag: AGuard,
 ) -> ResponseResult<()> {
     storage.delete_user(id).await?;

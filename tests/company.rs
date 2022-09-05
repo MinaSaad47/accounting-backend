@@ -1,5 +1,5 @@
 use accounting_backend::{
-    database::{models, rows, DatabaseAccountingApi, DB},
+    database::{models, rows, LocalStorageAccountingApi, DB},
     routes,
     types::response::Content,
 };
@@ -19,7 +19,7 @@ pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("db/migrations");
 async fn create_company_test(pool: Pool<DB>) -> Result<(), Box<dyn Error>> {
     let client = Client::tracked(
         rocket::build()
-            .manage(DatabaseAccountingApi { db: pool })
+            .manage(LocalStorageAccountingApi { db: pool })
             .attach(routes::stage()),
     )
     .await?;
@@ -58,7 +58,7 @@ async fn create_company_test(pool: Pool<DB>) -> Result<(), Box<dyn Error>> {
 async fn search_company_test(pool: Pool<DB>) -> Result<(), Box<dyn Error>> {
     let client = Client::tracked(
         rocket::build()
-            .manage(DatabaseAccountingApi { db: pool })
+            .manage(LocalStorageAccountingApi { db: pool })
             .attach(routes::stage()),
     )
     .await?;
@@ -143,7 +143,7 @@ async fn search_company_test(pool: Pool<DB>) -> Result<(), Box<dyn Error>> {
 async fn update_company_test(pool: Pool<DB>) -> Result<(), Box<dyn Error>> {
     let client = Client::tracked(
         rocket::build()
-            .manage(DatabaseAccountingApi { db: pool })
+            .manage(LocalStorageAccountingApi { db: pool })
             .attach(routes::stage()),
     )
     .await?;

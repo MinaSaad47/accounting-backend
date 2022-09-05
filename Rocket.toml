@@ -2,6 +2,10 @@
 address = "0.0.0.0"
 port = 4747
 
+[global.limits]
+file = "50MiB"
+data-form = "50MiB"
+
 [debug]
 log_level = "debug"
 

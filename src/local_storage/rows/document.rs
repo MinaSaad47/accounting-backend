@@ -13,9 +13,11 @@ pub struct Document {
     pub company_id: i64,
 }
 
-impl From<&Document> for PathBuf {
-    fn from(document: &Document) -> Self {
-        Self::from(document.company_id.to_string())
-            .join(format!("{}_{}", document.id, document.name))
+impl Document {
+    pub fn to_path_buf(&self) -> PathBuf {
+        PathBuf::from("companies")
+            .join(self.company_id.to_string())
+            .join("documents")
+            .join(format!("{}_{}", self.id, self.name))
     }
 }

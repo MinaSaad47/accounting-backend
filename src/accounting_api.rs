@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use rocket::{async_trait, data::DataStream};
+use rocket::{async_trait, fs::TempFile};
 
 use thiserror::Error;
 
@@ -82,9 +82,9 @@ pub trait AcountingApi {
     async fn create_document(
         &self,
         company_id: i64,
-        name: &str,
-        data: DataStream<'_>,
+        file: &mut TempFile<'_>,
     ) -> Result<Self::Document, Error>;
 
     async fn get_documents(&self, company_id: i64) -> Result<Vec<Self::Document>, Error>;
+    async fn delete_document(&self, id: i64) -> Result<(), Error>;
 }

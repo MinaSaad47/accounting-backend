@@ -1,4 +1,5 @@
 /target
 db/storage*
 db/documents
+db/file_system
 .env

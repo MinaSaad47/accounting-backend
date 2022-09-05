@@ -1,19 +1,19 @@
 use rocket::{
-    data::ToByteUnit, delete, fairing::AdHoc, get, post, put, routes, serde::json::Json, Data,
-    State,
+    delete, fairing::AdHoc, form::Form, fs::TempFile, get, post, put, routes, serde::json::Json,
+    FromForm, State,
 };
 
 use crate::{
     accounting_api::AcountingApi,
     auth::{AGuard, UGuard},
-    database::{models, rows, DatabaseAccountingApi},
+    local_storage::{models, rows, LocalStorageAccountingApi},
     types::response::{ResponseEnum, ResponseResult},
 };
 
 #[post("/", format = "application/json", data = "<company>")]
 pub async fn create_company(
     company: Json<models::Company>,
-    storage: &State<DatabaseAccountingApi>,
+    storage: &State<LocalStorageAccountingApi>,
     _ag: AGuard,
 ) -> ResponseResult<models::Company> {
     rocket::trace!("{company:#?}");
@@ -24,7 +24,7 @@ pub async fn create_company(
 #[get("/?<search>")]
 pub async fn search_company_admin(
     search: &str,
-    storage: &State<DatabaseAccountingApi>,
+    storage: &State<LocalStorageAccountingApi>,
     _ag: AGuard,
 ) -> ResponseResult<Vec<models::Company>> {
     rocket::trace!("{search:#?}");
@@ -35,7 +35,7 @@ pub async fn search_company_admin(
 #[get("/?<search>", rank = 2)]
 pub async fn search_company_user(
     search: &str,
-    storage: &State<DatabaseAccountingApi>,
+    storage: &State<LocalStorageAccountingApi>,
     _ug: UGuard,
 ) -> ResponseResult<Vec<models::Company>> {
     rocket::trace!("{search:#?}");
@@ -46,7 +46,7 @@ pub async fn search_company_user(
 #[put("/", format = "application/json", data = "<company>")]
 pub async fn update_company(
     company: Json<models::Company>,
-    storage: &State<DatabaseAccountingApi>,
+    storage: &State<LocalStorageAccountingApi>,
     _ag: AGuard,
 ) -> ResponseResult<models::Company> {
     rocket::trace!("{company:#?}");
@@ -62,7 +62,7 @@ pub async fn update_company(
 pub async fn create_expense(
     company_id: i64,
     expense: Json<rows::Expense>,
-    storage: &State<DatabaseAccountingApi>,
+    storage: &State<LocalStorageAccountingApi>,
     ug: UGuard,
 ) -> ResponseResult<models::Expense> {
     let expense = storage
@@ -80,7 +80,7 @@ pub async fn create_expense(
 pub async fn create_income(
     company_id: i64,
     income: Json<rows::Income>,
-    storage: &State<DatabaseAccountingApi>,
+    storage: &State<LocalStorageAccountingApi>,
     ag: AGuard,
 ) -> ResponseResult<models::Income> {
     let income = storage
@@ -93,22 +93,26 @@ pub async fn create_income(
 #[delete("/<id>")]
 pub async fn delete_company(
     id: i64,
-    storage: &State<DatabaseAccountingApi>,
+    storage: &State<LocalStorageAccountingApi>,
     _ag: AGuard,
 ) -> ResponseResult<()> {
     storage.delete_company(id).await?;
     Ok(ResponseEnum::ok((), "تم حذف الشركة".into()))
 }
 
-#[post("/<company_id>/documents/<file_name>", data = "<document>")]
+#[derive(FromForm, Debug)]
+struct Upload<'r> {
+    file: TempFile<'r>,
+}
+
+#[post("/<company_id>/documents", data = "<upload>")]
 async fn upload_document(
     company_id: i64,
-    file_name: &str,
-    document: Data<'_>,
-    storage: &State<DatabaseAccountingApi>,
+    mut upload: Form<Upload<'_>>,
+    storage: &State<LocalStorageAccountingApi>,
 ) -> ResponseResult<models::Document> {
     let document = storage
-        .create_document(company_id, file_name, document.open(128.kilobytes()))
+        .create_document(company_id, &mut upload.file)
         .await?;
 
     Ok(ResponseEnum::created(
@@ -120,7 +124,7 @@ async fn upload_document(
 #[get("/<company_id>/documents")]
 async fn get_documents(
     company_id: i64,
-    storage: &State<DatabaseAccountingApi>,
+    storage: &State<LocalStorageAccountingApi>,
     _ag: AGuard,
 ) -> ResponseResult<Vec<models::Document>> {
     let documents = storage.get_documents(company_id).await?;

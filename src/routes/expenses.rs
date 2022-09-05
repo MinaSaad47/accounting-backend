@@ -3,7 +3,7 @@ use rocket::{delete, fairing::AdHoc, get, routes, FromForm, State};
 use crate::{
     accounting_api::AcountingApi,
     auth::UGuard,
-    database::{models, DatabaseAccountingApi},
+    local_storage::{models, LocalStorageAccountingApi},
     types::response::{ResponseEnum, ResponseResult},
 };
 
@@ -29,7 +29,7 @@ struct User {
 #[get("/?<param..>")]
 pub async fn get_expenses(
     param: GetParam,
-    storage: &State<DatabaseAccountingApi>,
+    storage: &State<LocalStorageAccountingApi>,
 ) -> ResponseResult<Vec<models::Expense>> {
     rocket::debug!("{param:?}");
     let money_capitals = storage
@@ -44,7 +44,7 @@ pub async fn get_expenses(
 #[delete("/<id>")]
 pub async fn delete_expense(
     id: i64,
-    storage: &State<DatabaseAccountingApi>,
+    storage: &State<LocalStorageAccountingApi>,
     _ug: UGuard,
 ) -> ResponseResult<()> {
     storage.delete_expense(id).await?;

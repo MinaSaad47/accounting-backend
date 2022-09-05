@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use rocket::serde::{Deserialize, Serialize};
 
-use crate::database::rows;
+use crate::local_storage::rows;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(crate = "rocket::serde")]
@@ -15,7 +15,7 @@ pub struct Document {
 impl From<rows::Document> for Document {
     fn from(document: rows::Document) -> Self {
         Self {
-            path: (&document).into(),
+            path: document.to_path_buf(),
             document,
         }
     }

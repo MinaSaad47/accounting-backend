@@ -1,7 +1,7 @@
-use std::{fs, io, mem, path::PathBuf};
+use std::{io, mem};
 
 use crate::accounting_api::{self, AcountingApi};
-use rocket::{async_trait, data::DataStream, futures::future};
+use rocket::{async_trait, fs::TempFile, futures::future};
 
 use chrono::Utc;
 use sqlx::postgres::PgDatabaseError;
@@ -25,13 +25,13 @@ impl From<sqlx::Error> for accounting_api::Error {
 
 impl From<io::Error> for accounting_api::Error {
     fn from(error: io::Error) -> Self {
-        rocket::error!("[Database] {error:#?}");
+        rocket::error!("[FileSystem] {error:#?}");
         Self::Other(error.to_string().into())
     }
 }
 
 #[async_trait]
-impl AcountingApi for super::DatabaseAccountingApi {
+impl AcountingApi for super::LocalStorageAccountingApi {
     type Company = models::Company;
     type User = models::User;
     type Expense = models::Expense;
@@ -904,10 +904,15 @@ impl AcountingApi for super::DatabaseAccountingApi {
     async fn create_document(
         &self,
         company_id: i64,
-        name: &str,
-        data: DataStream<'_>,
+        file: &mut TempFile<'_>,
     ) -> Result<Self::Document, Self::Error> {
         let mut transaction = self.db.begin().await?;
+
+        let file_name = file
+            .raw_name()
+            .map(|n| n.dangerous_unsafe_unsanitized_raw().as_str())
+            .ok_or(Self::Error::Other("اسم ملف غير امن".into()))?;
+
         let document = sqlx::query_as!(
             rows::Document,
             r#"
@@ -918,28 +923,20 @@ impl AcountingApi for super::DatabaseAccountingApi {
                 RETURNING 
                     *
             "#,
-            name,
+            file_name,
             company_id,
         )
         .fetch_one(&mut transaction)
         .await?;
 
-        let document: models::Document = document.into();
-        let path = PathBuf::from("db").join("documents").join(&document.path);
-        let directory = path.parent().expect("company id");
-        rocket::info!("checking directory: {:?}", directory);
-        if !directory.exists() {
-            rocket::warn!("directory does not exists: {:?}", directory);
-            rocket::info!("creating directory: {:?}", directory);
-            fs::create_dir_all(directory)?;
-        } else {
-            rocket::info!("found directory: {:?}", directory);
-        }
-
-        data.into_file(path).await?;
+        self.fs
+            .write()
+            .await
+            .save(document.to_path_buf(), file)
+            .await?;
 
         transaction.commit().await?;
-        Ok(document)
+        Ok(document.into())
     }
 
     async fn get_documents(&self, company_id: i64) -> Result<Vec<Self::Document>, Self::Error> {
@@ -964,5 +961,27 @@ impl AcountingApi for super::DatabaseAccountingApi {
             .collect();
 
         Ok(documents)
+    }
+    async fn delete_document(&self, id: i64) -> Result<(), Self::Error> {
+        let mut transaction = self.db.begin().await?;
+        let document = sqlx::query_as!(
+            rows::Document,
+            r#"
+                DELETE FROM
+                    documents
+                WHERE
+                    id = $1
+                RETURNING
+                    *
+            "#,
+            id,
+        )
+        .fetch_one(&mut transaction)
+        .await?;
+
+        self.fs.write().await.delete(document.to_path_buf()).await?;
+
+        transaction.commit().await?;
+        Ok(())
     }
 }

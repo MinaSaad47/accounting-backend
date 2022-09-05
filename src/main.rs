@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate rocket;
 
-use accounting_backend::{database, routes};
+use accounting_backend::{local_storage, routes};
 
 #[launch]
 fn rocket() -> _ {
@@ -10,6 +10,6 @@ fn rocket() -> _ {
     }
 
     rocket::build()
-        .attach(database::stage())
+        .attach(local_storage::stage())
         .attach(routes::stage())
 }

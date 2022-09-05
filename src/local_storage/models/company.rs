@@ -1,6 +1,6 @@
 use rocket::serde::{Deserialize, Serialize};
 
-use crate::database::rows;
+use crate::local_storage::rows;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(crate = "rocket::serde")]
