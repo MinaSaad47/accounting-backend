@@ -122,10 +122,20 @@ async fn upload_document(
 }
 
 #[get("/<company_id>/documents")]
-async fn get_documents(
+async fn get_documents_admin(
     company_id: i64,
     storage: &State<LocalStorageAccountingApi>,
     _ag: AGuard,
+) -> ResponseResult<Vec<models::Document>> {
+    let documents = storage.get_documents(company_id).await?;
+    Ok(ResponseEnum::ok(documents, "تم ايجاد مستندات بنجاح".into()))
+}
+
+#[get("/<company_id>/documents", rank = 2)]
+async fn get_documents_user(
+    company_id: i64,
+    storage: &State<LocalStorageAccountingApi>,
+    _ug: UGuard,
 ) -> ResponseResult<Vec<models::Document>> {
     let documents = storage.get_documents(company_id).await?;
     Ok(ResponseEnum::ok(documents, "تم ايجاد مستندات بنجاح".into()))
@@ -140,15 +150,27 @@ async fn create_funder(
     company_id: i64,
     funder: Json<models::Funder>,
     storage: &State<LocalStorageAccountingApi>,
+    _ag: AGuard,
 ) -> ResponseResult<models::Funder> {
     let funder = storage.create_funder(company_id, &funder).await?;
     Ok(ResponseEnum::created(funder, "تم اضافة ممول ببنجاح".into()))
 }
 
 #[get("/<company_id>/funders")]
-async fn get_funders(
+async fn get_funders_admin(
     company_id: i64,
     storage: &State<LocalStorageAccountingApi>,
+    _ag: AGuard
+) -> ResponseResult<Vec<models::Funder>> {
+    let funder = storage.get_funders(company_id).await?;
+    Ok(ResponseEnum::created(funder, "تم اضافة ممول ببنجاح".into()))
+}
+
+#[get("/<company_id>/funders", rank = 2)]
+async fn get_funders_user(
+    company_id: i64,
+    storage: &State<LocalStorageAccountingApi>,
+    _ug: UGuard
 ) -> ResponseResult<Vec<models::Funder>> {
     let funder = storage.get_funders(company_id).await?;
     Ok(ResponseEnum::created(funder, "تم اضافة ممول ببنجاح".into()))
@@ -167,9 +189,11 @@ pub fn stage() -> AdHoc {
                 create_income,
                 delete_company,
                 upload_document,
-                get_documents,
+                get_documents_admin,
+                get_documents_user,
                 create_funder,
-                get_funders,
+                get_funders_admin,
+                get_funders_user,
             ],
         )
     })
