@@ -46,8 +46,6 @@ impl AcountingApi for super::LocalStorageAccountingApi {
     ) -> Result<Self::Company, accounting_api::Error> {
         let mut transaction = self.db.begin().await?;
 
-        let funder = &c.funders[0];
-        let company = &c.company;
         let company: rows::Company = sqlx::query_as(
             r#"
             INSERT INTO 
@@ -71,39 +69,24 @@ impl AcountingApi for super::LocalStorageAccountingApi {
                 *
         "#,
         )
-        .bind(&company.commercial_feature)
-        .bind(&company.is_working)
-        .bind(&company.legal_entity)
-        .bind(&company.register_number)
-        .bind(&&company.start_date)
-        .bind(&company.general_tax_mission)
-        .bind(&company.activity_nature)
-        .bind(&company.activity_location)
-        .bind(&company.accounts)
-        .bind(&company.record_number)
-        .bind(&company.user_name)
-        .bind(&company.email)
+        .bind(&c.as_ref().commercial_feature)
+        .bind(&c.as_ref().is_working)
+        .bind(&c.as_ref().legal_entity)
+        .bind(&c.as_ref().register_number)
+        .bind(&c.as_ref().start_date)
+        .bind(&c.as_ref().general_tax_mission)
+        .bind(&c.as_ref().activity_nature)
+        .bind(&c.as_ref().activity_location)
+        .bind(&c.as_ref().accounts)
+        .bind(&c.as_ref().record_number)
+        .bind(&c.as_ref().user_name)
+        .bind(&c.as_ref().email)
         .fetch_one(&mut transaction)
-        .await?;
-        let funders: Vec<rows::Funder> = sqlx::query_as(
-            r#"
-            INSERT INTO funders (name, company_id)
-            VALUES ($1, $2)
-            RETURNING *
-        "#,
-        )
-        .bind(&funder.name)
-        .bind(&company.id)
-        .fetch_all(&mut transaction)
         .await?;
 
         transaction.commit().await?;
 
-        Ok(models::Company {
-            company,
-            funders,
-            expenses: None,
-        })
+        Ok(company.into())
     }
 
     async fn update_company(
@@ -111,10 +94,6 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         c: &mut Self::Company,
     ) -> Result<Self::Company, accounting_api::Error> {
         let mut transaction = self.db.begin().await?;
-
-        let company = &c.company;
-        let mut funders = mem::take(&mut c.funders);
-        let mut expenses = mem::take(&mut c.expenses);
 
         let company = sqlx::query_as!(
             rows::Company,
@@ -167,134 +146,39 @@ impl AcountingApi for super::LocalStorageAccountingApi {
                     verification_code,
                     email
             "#,
-            &company.commercial_feature,
-            &company.is_working,
-            &company.legal_entity,
-            &company.file_number as _,
-            &company.register_number,
-            &company.start_date,
-            &company.stop_date as _,
-            &company.general_tax_mission,
-            &company.value_tax_mission as _,
-            &company.activity_nature,
-            &company.activity_location,
-            &company.accounts,
-            &company.joining_date as _,
-            &company.natural_id as _,
-            &company.record_side as _,
-            &company.record_number as _,
-            &company.user_name,
-            &company.passport as _,
-            &company.verification_code as _,
-            &company.email,
-            &company.id as _
+            &c.as_ref().commercial_feature,
+            &c.as_ref().is_working,
+            &c.as_ref().legal_entity,
+            &c.as_ref().file_number as _,
+            &c.as_ref().register_number,
+            &c.as_ref().start_date,
+            &c.as_ref().stop_date as _,
+            &c.as_ref().general_tax_mission,
+            &c.as_ref().value_tax_mission as _,
+            &c.as_ref().activity_nature,
+            &c.as_ref().activity_location,
+            &c.as_ref().accounts,
+            &c.as_ref().joining_date as _,
+            &c.as_ref().natural_id as _,
+            &c.as_ref().record_side as _,
+            &c.as_ref().record_number as _,
+            &c.as_ref().user_name,
+            &c.as_ref().passport as _,
+            &c.as_ref().verification_code as _,
+            &c.as_ref().email,
+            &c.as_ref().id as _
         )
         .fetch_one(&mut transaction)
         .await?;
-
-        for funder in funders.iter_mut() {
-            let opt_funder = sqlx::query_as!(
-                rows::Funder,
-                r#"
-                    UPDATE funders
-                    SET
-                        name = $2
-                    WHERE
-                        id = $1
-                    RETURNING
-                        id AS "id: _", name, company_id AS "company_id!: _"
-                "#,
-                &funder.id as _,
-                &funder.name,
-            )
-            .fetch_optional(&mut transaction)
-            .await?;
-            if opt_funder.is_none() {
-                *funder = sqlx::query_as!(
-                    rows::Funder,
-                    r#"
-                    INSERT INTO
-                        funders (
-                            name, company_id
-                        )
-                    VALUES (
-                        $1, $2
-                    )
-                    RETURNING
-                        id AS "id: _", name, company_id AS "company_id!: _"
-                "#,
-                    &funder.name,
-                    &company.id as _,
-                )
-                .fetch_one(&mut transaction)
-                .await?;
-            }
-        }
-
-        for expense in expenses.iter_mut().flatten() {
-            let opt_expense = sqlx::query_as!(
-                rows::Expense,
-                r#"
-                    UPDATE expenses
-                    SET
-                        value = $2
-                    WHERE
-                        id = $1
-                    RETURNING
-                        id AS "id: _",
-                        value,
-                        description,
-                        time AS "time?: _",
-                        user_id AS "user_id!: _",
-                        company_id AS "company_id!: _"
-                "#,
-                &expense.id as _,
-                &expense.value,
-            )
-            .fetch_optional(&mut transaction)
-            .await?;
-            if opt_expense.is_none() {
-                *expense = sqlx::query_as!(
-                    rows::Expense,
-                    r#"
-                        INSERT INTO
-                            expenses (
-                                value, description, time, company_id
-                            )
-                        VALUES (
-                            $1, $2, $3, $4
-                        )
-                        RETURNING
-                        id AS "id: _",
-                        value,
-                        description,
-                        time AS "time?: _",
-                        user_id AS "user_id!: _",
-                        company_id AS "company_id!: _"
-                    "#,
-                    &expense.value,
-                    &expense.description,
-                    Utc::now(),
-                    &company.id as _,
-                )
-                .fetch_one(&mut transaction)
-                .await?;
-            }
-        }
-
         transaction.commit().await?;
-        Ok(models::Company {
-            company,
-            funders,
-            expenses,
-        })
+        Ok(company.into())
     }
 
     async fn search_company(&self, s: &str) -> Result<Vec<Self::Company>, accounting_api::Error> {
         let companies = sqlx::query_as!(
             rows::Company,
             r#"
-                SELECT
+                SELECT DISTINCT ON (companies.id)
                     companies.id AS "id: _",
                     commercial_feature,
                     is_working,
@@ -318,12 +202,14 @@ impl AcountingApi for super::LocalStorageAccountingApi {
                     email
                 FROM 
                     companies
-                JOIN 
+                LEFT JOIN 
                     funders
                 ON 
                     companies.id = funders.company_id
                 WHERE 
-                    companies.id::TEXT LIKE ('%' || $1 || '%') OR funders.name LIKE ('%' || $1 || '%') 
+                    companies.id::TEXT ILIKE ('%' || $1 || '%') OR
+                    funders.name ILIKE ('%' || $1 || '%') OR
+                    companies.commercial_feature ILIKE ('%' || $1 || '%')
             "#,
             s,
         )
@@ -334,51 +220,7 @@ impl AcountingApi for super::LocalStorageAccountingApi {
             return Err(Self::Error::ObjectNotFound);
         }
 
-        let companies: Vec<models::Company> =
-            future::join_all(companies.into_iter().map(|c| async {
-                let funders = sqlx::query_as!(
-                    rows::Funder,
-                    r#"
-                        SELECT
-                            id AS "id: _", name , company_id AS "company_id!: _"
-                        FROM
-                            funders
-                        WHERE
-                            company_id = $1
-                    "#,
-                    &c.id.expect("queryed_companies must have id")
-                )
-                .fetch_all(&self.db)
-                .await
-                .expect("every company must have at least one funder");
-                let expenses = sqlx::query_as!(
-                    rows::Expense,
-                    r#"
-                        SELECT
-                            id AS "id: _",
-                            value,
-                            description,
-                            time AS "time?: _",
-                            user_id AS "user_id!: _",
-                            company_id AS "company_id!: _"
-                        FROM
-                            expenses
-                        WHERE
-                            company_id = $1
-                    "#,
-                    &c.id.expect("queryed_companies must have id")
-                )
-                .fetch_all(&self.db)
-                .await
-                .ok();
-                models::Company {
-                    company: c,
-                    funders,
-                    expenses,
-                }
-            }))
-            .await;
-        Ok(companies)
+        Ok(companies.into_iter().map(|c| c.into()).collect())
     }
 
     async fn pay_company(&self, _c: &Self::Company, _v: f64) -> Result<Self::Company, Self::Error> {

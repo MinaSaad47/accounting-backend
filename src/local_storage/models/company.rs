@@ -7,6 +7,16 @@ use crate::local_storage::rows;
 pub struct Company {
     #[serde(flatten)]
     pub company: rows::Company,
-    pub funders: Vec<rows::Funder>,
-    pub expenses: Option<Vec<rows::Expense>>,
+}
+
+impl From<rows::Company> for Company {
+    fn from(company: rows::Company) -> Self {
+        Self { company }
+    }
+}
+
+impl AsRef<rows::Company> for Company {
+    fn as_ref(&self) -> &rows::Company {
+        &self.company
+    }
 }
