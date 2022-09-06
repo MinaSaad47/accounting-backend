@@ -69,7 +69,7 @@ pub async fn create_expense(
         .create_expense(ug.0, company_id, expense.value, &expense.description)
         .await?;
 
-    Ok(ResponseEnum::created(expense, "تم اضافة رأس مال".into()))
+    Ok(ResponseEnum::created(expense, "تم اضافة مصروفات".into()))
 }
 
 #[post(
@@ -87,7 +87,7 @@ pub async fn create_income(
         .create_income(ag.0, company_id, income.value, &income.description)
         .await?;
 
-    Ok(ResponseEnum::created(income, "تم اضافة رأس مال".into()))
+    Ok(ResponseEnum::created(income, "تم اضافة واردات".into()))
 }
 
 #[delete("/<id>")]

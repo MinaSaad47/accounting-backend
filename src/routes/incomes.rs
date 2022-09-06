@@ -45,7 +45,7 @@ pub async fn delete_income(
     _ag: AGuard,
 ) -> ResponseResult<()> {
     storage.delete_income(id).await?;
-    Ok(ResponseEnum::ok((), "تم مسح رأس المال: {id}".into()))
+    Ok(ResponseEnum::ok((), "تم مسح واردات".into()))
 }
 
 pub fn stage() -> AdHoc {

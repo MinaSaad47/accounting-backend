@@ -48,7 +48,7 @@ pub async fn delete_expense(
     _ug: UGuard,
 ) -> ResponseResult<()> {
     storage.delete_expense(id).await?;
-    Ok(ResponseEnum::ok((), "تم مسح رأس المال: {id}".into()))
+    Ok(ResponseEnum::ok((), "تم مسح مصروفات".into()))
 }
 
 pub fn stage() -> AdHoc {
