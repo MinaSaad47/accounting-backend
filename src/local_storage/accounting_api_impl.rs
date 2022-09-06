@@ -1,9 +1,8 @@
-use std::{io, mem};
+use std::io;
 
 use crate::accounting_api::{self, AcountingApi};
 use rocket::{async_trait, fs::TempFile, futures::future};
 
-use chrono::Utc;
 use sqlx::postgres::PgDatabaseError;
 
 use super::{models, rows};
@@ -479,6 +478,11 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         value: f64,
         description: &str,
     ) -> Result<Self::Expense, Self::Error> {
+
+        if value <= 0.0 {
+            return Err(Self::Error::InvalidValue);
+        }
+
         let user = sqlx::query!(
             r#"
                 SELECT
@@ -492,6 +496,7 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         )
         .fetch_one(&self.db)
         .await?;
+        
 
         if value > user.value {
             return Err(Self::Error::NotEnoughUserValue(value, user.value));

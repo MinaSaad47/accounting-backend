@@ -10,6 +10,8 @@ pub enum Error {
     ObjectNotFound,
     #[error("لا يوجد قيمة كافية: \"{0} > {1}\"")]
     NotEnoughUserValue(f64, f64),
+    #[error("قيمة غير صحيحة:  >= 0")]
+    InvalidValue,
     #[error("حدث خطأ في قاعدة البيانات:\n {0}")]
     Other(Cow<'static, str>),
 }
