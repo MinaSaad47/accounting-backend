@@ -7,7 +7,7 @@ use rocket::{fs::TempFile, tokio::fs};
 
 #[derive(Debug)]
 pub struct FileSystem {
-    root: PathBuf,
+    pub root: PathBuf,
 }
 
 impl FileSystem {

@@ -1,11 +1,9 @@
-use std::path::{Path, PathBuf};
-
-use rocket::{
-    delete,
-    fairing::AdHoc,
-    fs::{relative, NamedFile},
-    get, routes, State,
+use std::{
+    io,
+    path::{Path, PathBuf},
 };
+
+use rocket::{delete, fairing::AdHoc, fs::NamedFile, get, routes, State};
 
 use crate::{
     accounting_api::AcountingApi,
@@ -15,15 +13,25 @@ use crate::{
 };
 
 #[get("/<path..>")]
-pub async fn download_document_admin(path: PathBuf, _ag: AGuard) -> Option<NamedFile> {
-    let path = Path::new(relative!("db/file_system")).join(path);
-    NamedFile::open(path).await.ok()
+pub async fn download_document_admin(
+    path: PathBuf,
+    storage: &State<LocalStorageAccountingApi>,
+    _ag: AGuard,
+) -> io::Result<NamedFile> {
+    let path = Path::new(&storage.fs.read().await.root).join(path);
+    rocket::info!("[admin|documents] requesting: {path:?}");
+    NamedFile::open(path).await
 }
 
 #[get("/<path..>", rank = 2)]
-pub async fn download_document_user(path: PathBuf, _ug: UGuard) -> Option<NamedFile> {
-    let path = Path::new(relative!("db/file_system")).join(path);
-    NamedFile::open(path).await.ok()
+pub async fn download_document_user(
+    path: PathBuf,
+    storage: &State<LocalStorageAccountingApi>,
+    _ug: UGuard,
+) -> io::Result<NamedFile> {
+    let path = Path::new(&storage.fs.read().await.root).join(path);
+    rocket::info!("[user|documents] requesting: {path:?}");
+    NamedFile::open(path).await
 }
 
 #[delete("/<id>")]
