@@ -11,12 +11,18 @@ pub struct Document {
     pub name: String,
     pub time: DateTime<Utc>,
     pub company_id: i64,
+    #[serde(skip)]
+    pub company_name: String,
 }
 
 impl Document {
     pub fn to_path_buf(&self) -> PathBuf {
         PathBuf::from("companies")
-            .join(self.company_id.to_string())
+            .join(format!(
+                "{}_{}",
+                self.company_id.to_string(),
+                self.company_name
+            ))
             .join("documents")
             .join(format!("{}_{}", self.id, self.name))
     }

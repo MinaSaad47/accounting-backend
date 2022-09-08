@@ -478,7 +478,6 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         value: f64,
         description: &str,
     ) -> Result<Self::Expense, Self::Error> {
-
         if value <= 0.0 {
             return Err(Self::Error::InvalidValue);
         }
@@ -496,7 +495,6 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         )
         .fetch_one(&self.db)
         .await?;
-        
 
         if value > user.value {
             return Err(Self::Error::NotEnoughUserValue(value, user.value));
@@ -768,8 +766,15 @@ impl AcountingApi for super::LocalStorageAccountingApi {
                     documents (name, company_id)
                 VALUES
                     ($1, $2)
-                RETURNING 
-                    *
+                RETURNING
+                    id, name, time, company_id, (
+                        SELECT
+                            commercial_feature
+                        FROM
+                            companies
+                        WHERE
+                            companies.id = company_id
+                    ) AS "company_name!: _"
             "#,
             file_name,
             company_id,
@@ -792,9 +797,13 @@ impl AcountingApi for super::LocalStorageAccountingApi {
             rows::Document,
             r#"
                 SELECT
-                    *
+                    documents.id, name, time, company_id, commercial_feature AS company_name
                 FROM
                     documents
+                JOIN
+                    companies
+                ON
+                    companies.id = company_id 
                 WHERE
                     company_id = $1
             "#,
@@ -820,7 +829,14 @@ impl AcountingApi for super::LocalStorageAccountingApi {
                 WHERE
                     id = $1
                 RETURNING
-                    *
+                    id, name, time, company_id, (
+                        SELECT
+                            commercial_feature
+                        FROM
+                            companies
+                        WHERE
+                            companies.id = company_id
+                    ) AS "company_name!: _"
             "#,
             id,
         )
