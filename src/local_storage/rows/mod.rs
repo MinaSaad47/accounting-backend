@@ -1,13 +1,11 @@
-pub mod user;
-pub mod funder;
 pub mod company;
 pub mod expense;
+pub mod funder;
 pub mod income;
-pub mod document;
+pub mod user;
 
-pub use user::*;
-pub use funder::*;
 pub use company::*;
 pub use expense::*;
+pub use funder::*;
 pub use income::*;
-pub use document::*;
+pub use user::*;

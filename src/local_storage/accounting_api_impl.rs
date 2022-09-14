@@ -1,6 +1,9 @@
-use std::io;
+use std::{io, path::Path};
 
-use crate::accounting_api::{self, AcountingApi};
+use crate::{
+    accounting_api::{self, AcountingApi},
+    file_system::FileSystemFile,
+};
 use rocket::{async_trait, fs::TempFile, futures::future};
 
 use sqlx::postgres::PgDatabaseError;
@@ -752,100 +755,65 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         company_id: i64,
         file: &mut TempFile<'_>,
     ) -> Result<Self::Document, Self::Error> {
-        let mut transaction = self.db.begin().await?;
-
-        let file_name = file
-            .raw_name()
-            .map(|n| n.dangerous_unsafe_unsanitized_raw().as_str())
-            .ok_or(Self::Error::Other("اسم ملف غير امن".into()))?;
-
-        let document = sqlx::query_as!(
-            rows::Document,
+        rocket::debug!("[create_document] creating {:?}", file.name_with_ext());
+        let company_name = sqlx::query!(
             r#"
-                INSERT INTO
-                    documents (name, company_id)
-                VALUES
-                    ($1, $2)
-                RETURNING
-                    id, name, time, company_id, (
-                        SELECT
-                            commercial_feature
-                        FROM
-                            companies
-                        WHERE
-                            companies.id = company_id
-                    ) AS "company_name!: _"
+                SELECT
+                    commercial_feature
+                FROM
+                    companies
+                WHERE
+                    id = $1
+
             "#,
-            file_name,
             company_id,
         )
-        .fetch_one(&mut transaction)
-        .await?;
+        .fetch_one(&self.db)
+        .await?
+        .commercial_feature;
 
-        self.fs
-            .write()
+        let document = models::Document::new(&company_name, &file)
             .await
-            .save(document.to_path_buf(), file)
-            .await?;
+            .ok_or(Self::Error::Other("حدث خطأ في انشاء المستند".into()))?;
 
-        transaction.commit().await?;
-        Ok(document.into())
+        self.fs.write().await.save(&document.path, file).await?;
+
+        Ok(document)
     }
 
     async fn get_documents(&self, company_id: i64) -> Result<Vec<Self::Document>, Self::Error> {
-        let docuemnts = sqlx::query_as!(
-            rows::Document,
+        let company_name = sqlx::query!(
             r#"
                 SELECT
-                    documents.id, name, time, company_id, commercial_feature AS company_name
+                    commercial_feature
                 FROM
-                    documents
-                JOIN
                     companies
-                ON
-                    companies.id = company_id 
                 WHERE
-                    company_id = $1
+                    id = $1
+
             "#,
             company_id,
         )
-        .fetch_all(&self.db)
-        .await?;
+        .fetch_one(&self.db)
+        .await?
+        .commercial_feature;
 
-        let documents: Vec<models::Document> = docuemnts
-            .into_iter()
-            .map(|doc| models::Document::from(doc))
-            .collect();
+        let path = Path::new("companies").join(&company_name).join("documents");
+
+        let mut documents = vec![];
+
+        for path in self.fs.read().await.get(path).await {
+            if let Some(document) = models::Document::new(&company_name, &path.as_ref()).await {
+                documents.push(document);
+            }
+        }
 
         Ok(documents)
     }
-    async fn delete_document(&self, id: i64) -> Result<(), Self::Error> {
-        let mut transaction = self.db.begin().await?;
-        let document = sqlx::query_as!(
-            rows::Document,
-            r#"
-                DELETE FROM
-                    documents
-                WHERE
-                    id = $1
-                RETURNING
-                    id, name, time, company_id, (
-                        SELECT
-                            commercial_feature
-                        FROM
-                            companies
-                        WHERE
-                            companies.id = company_id
-                    ) AS "company_name!: _"
-            "#,
-            id,
-        )
-        .fetch_one(&mut transaction)
-        .await?;
 
-        self.fs.write().await.delete(document.to_path_buf()).await?;
-
-        transaction.commit().await?;
+    async fn delete_document(&self, path: impl AsRef<Path> + Send) -> Result<(), Self::Error> {
+        rocket::debug!("[delete_document] deleting {:?}", path.as_ref());
+        self.fs.write().await.delete(path).await?;
         Ok(())
     }
 
