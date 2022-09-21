@@ -3,7 +3,14 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use rocket::{delete, fairing::AdHoc, fs::NamedFile, get, routes, State};
+use rocket::{
+    delete,
+    fairing::AdHoc,
+    fs::NamedFile,
+    get, routes,
+    serde::{json::Json, Deserialize, Serialize},
+    State,
+};
 
 use crate::{
     accounting_api::AcountingApi,
@@ -34,13 +41,19 @@ pub async fn download_document_user(
     NamedFile::open(path).await
 }
 
-#[delete("/<id>")]
+#[derive(Serialize, Deserialize)]
+#[serde(crate = "rocket::serde")]
+pub struct DeleteData {
+    pub path: PathBuf,
+}
+
+#[delete("/", format = "application/json", data = "<data>")]
 pub async fn delete_document(
-    id: i64,
+    data: Json<DeleteData>,
     storage: &State<LocalStorageAccountingApi>,
     _ag: AGuard,
 ) -> ResponseResult<()> {
-    storage.delete_document(id).await?;
+    storage.delete_document(data.into_inner().path).await?;
     Ok(ResponseEnum::ok((), "تم مسح المستند".into()))
 }
 

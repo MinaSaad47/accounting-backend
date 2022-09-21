@@ -160,7 +160,7 @@ async fn create_funder(
 async fn get_funders_admin(
     company_id: i64,
     storage: &State<LocalStorageAccountingApi>,
-    _ag: AGuard
+    _ag: AGuard,
 ) -> ResponseResult<Vec<models::Funder>> {
     let funder = storage.get_funders(company_id).await?;
     Ok(ResponseEnum::created(funder, "تم اضافة ممول ببنجاح".into()))
@@ -170,7 +170,7 @@ async fn get_funders_admin(
 async fn get_funders_user(
     company_id: i64,
     storage: &State<LocalStorageAccountingApi>,
-    _ug: UGuard
+    _ug: UGuard,
 ) -> ResponseResult<Vec<models::Funder>> {
     let funder = storage.get_funders(company_id).await?;
     Ok(ResponseEnum::created(funder, "تم اضافة ممول ببنجاح".into()))

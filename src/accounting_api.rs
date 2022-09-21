@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, path::Path};
 
 use rocket::{async_trait, fs::TempFile};
 
@@ -36,7 +36,8 @@ pub trait AcountingApi {
 
     async fn delete_company(&self, id: i64) -> Result<(), Error>;
 
-    async fn create_funder(&self, company_id: i64, f: &Self::Funder) -> Result<Self::Funder, Error>;
+    async fn create_funder(&self, company_id: i64, f: &Self::Funder)
+        -> Result<Self::Funder, Error>;
     async fn get_funders(&self, company_id: i64) -> Result<Vec<Self::Funder>, Error>;
     async fn delete_funder(&self, id: i64) -> Result<(), Error>;
 
@@ -93,5 +94,5 @@ pub trait AcountingApi {
     ) -> Result<Self::Document, Error>;
 
     async fn get_documents(&self, company_id: i64) -> Result<Vec<Self::Document>, Error>;
-    async fn delete_document(&self, id: i64) -> Result<(), Error>;
+    async fn delete_document(&self, path: impl AsRef<Path> + Send) -> Result<(), Error>;
 }
