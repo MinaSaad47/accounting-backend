@@ -1,0 +1,7 @@
+/target
+/db/file_system/*
+.dockerignore
+Dockerfile
+.git
+.gitignore
+docker-compose.yaml

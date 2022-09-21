@@ -8,25 +8,15 @@ edition = "2021"
 [dependencies]
 rocket = { version = "0.5.0-rc.2", features = ["json"] }
 serde_json = "1"
-
-[dependencies.rocket_db_pools]
-version = "0.1.0-rc.2"
-features = ["sqlx_postgres", "sqlx_sqlite"]
+jsonwebtoken = "8.1.1"
+thiserror = "1"
+dotenvy = "0.15.3"
 
 [dependencies.sqlx]
 version = "0.6.1"
 default-features = false
-features = ["runtime-tokio-rustls", "migrate", "macros", "sqlite", "postgres", "chrono", "uuid", "json", "any"]
+features = ["runtime-tokio-rustls", "migrate", "macros", "postgres", "chrono", "json", "offline"]
 
-
-[dependencies.uuid]
-version = "1.1.2"
-features = [
-    "serde",
-    "v4",
-    "fast-rng",
-    "macro-diagnostics",
-]
 
 [dependencies.chrono]
 version = "0.4"
