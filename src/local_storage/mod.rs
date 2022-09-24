@@ -1,8 +1,7 @@
 pub mod accounting_api_impl;
 pub mod models;
-pub mod rows;
 pub use models::*;
-pub use rows::*;
+pub use models::*;
 use sqlx::pool::PoolOptions;
 
 use rocket::{fairing::AdHoc, tokio::sync::RwLock};

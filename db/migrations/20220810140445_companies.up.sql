@@ -1,25 +1,25 @@
 -- Add up migration script here
-CREATE TABLE  IF NOT EXISTS companies (
+CREATE TABLE IF NOT EXISTS companies (
     id BIGSERIAL PRIMARY KEY,
     commercial_feature VARCHAR NOT NULL UNIQUE,
     is_working BOOLEAN NOT NULL,
-    legal_entity VARCHAR NOT NULL,
-    file_number VARCHAR,
-    register_number VARCHAR NOT NULL,
-    start_date TIMESTAMPTZ NOT NULL,
+    legal_entity VARCHAR,
+    file_number VARCHAR CONSTRAINT file_number_mus_be_digits CHECK (
+        file_number ~ '^\d+$'
+        OR file_number IS NULL
+    ),
+    register_number VARCHAR CONSTRAINT register_number CHECK (
+        register_number ~ '^\d{9}$'
+        OR register_number IS NULL
+    ),
+    start_date TIMESTAMPTZ,
     stop_date TIMESTAMPTZ,
-    general_tax_mission VARCHAR NOT NULL,
+    general_tax_mission VARCHAR,
     value_tax_mission VARCHAR,
-    activity_nature VARCHAR NOT NULL,
-    activity_location VARCHAR NOT NULL,
-    accounts VARCHAR NOT NULL,
-    joining_date TIMESTAMPTZ,
-    natural_id VARCHAR,
-    money_capital DOUBLE PRECISION,
-    record_side VARCHAR,
-    record_number VARCHAR NOT NULL,
-    user_name VARCHAR NOT NULL,
-    passport VARCHAR,
-    verification_code VARCHAR,
-    email VARCHAR NOT NULL UNIQUE
+    activity_nature VARCHAR,
+    activity_location VARCHAR,
+    record_number VARCHAR,
+    username VARCHAR UNIQUE,
+    password VARCHAR,
+    email VARCHAR UNIQUE
 );

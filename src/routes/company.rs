@@ -6,7 +6,7 @@ use rocket::{
 use crate::{
     accounting_api::AcountingApi,
     auth::{AGuard, UGuard},
-    local_storage::{models, rows, LocalStorageAccountingApi},
+    local_storage::{models, LocalStorageAccountingApi},
     types::response::{ResponseEnum, ResponseResult},
 };
 
@@ -61,7 +61,7 @@ pub async fn update_company(
 )]
 pub async fn create_expense(
     company_id: i64,
-    expense: Json<rows::Expense>,
+    expense: Json<models::Expense>,
     storage: &State<LocalStorageAccountingApi>,
     ug: UGuard,
 ) -> ResponseResult<models::Expense> {
@@ -79,7 +79,7 @@ pub async fn create_expense(
 )]
 pub async fn create_income(
     company_id: i64,
-    income: Json<rows::Income>,
+    income: Json<models::Income>,
     storage: &State<LocalStorageAccountingApi>,
     ag: AGuard,
 ) -> ResponseResult<models::Income> {

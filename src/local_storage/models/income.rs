@@ -1,16 +1,17 @@
-use rocket::serde::{Serialize, Deserialize};
-use sqlx::FromRow;
+use chrono::{DateTime, Utc};
+use rocket::serde::{Deserialize, Serialize};
 
-use crate::local_storage::rows;
-
-
-
-#[derive(Serialize, Deserialize, FromRow, Debug, Clone)]
+#[derive(Serialize, Deserialize,  Debug, Clone)]
 #[serde(crate = "rocket::serde")]
 pub struct Income {
+    #[serde(default)]
+    pub id: Option<i64>,
+    pub value: f64,
+    pub description: String,
+    #[serde(default)]
+    pub time: Option<DateTime<Utc>>,
+    #[serde(default)]
     pub company: String,
+    #[serde(default)]
     pub admin: String,
-    #[serde(flatten)]
-    pub income: rows::Income,
 }
-

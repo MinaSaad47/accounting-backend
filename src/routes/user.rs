@@ -2,7 +2,7 @@ use rocket::fairing::AdHoc;
 use rocket::serde::json::Json;
 use rocket::serde::{Deserialize, Serialize};
 
-use rocket::{get, patch, post, routes, State, delete};
+use rocket::{delete, get, patch, post, routes, State};
 
 use crate::accounting_api::AcountingApi;
 use crate::auth::{AGuard, ApiToken, UGuard};
@@ -16,8 +16,7 @@ pub async fn login_user(
     storage: &State<LocalStorageAccountingApi>,
 ) -> ResponseResult<ApiToken> {
     let user = storage.login_user(&user).await?;
-    let c = &user.user;
-    let token = ApiToken::generate(c.id.expect("valid user id"), c.is_admin);
+    let token = ApiToken::generate(user.id.expect("valid user id"), user.is_admin);
     Ok(ResponseEnum::ok(token, "تم تسجيل الدخول بنجاح".into()))
 }
 
