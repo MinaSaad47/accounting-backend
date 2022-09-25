@@ -25,6 +25,14 @@ impl FileSystem {
         }
     }
 
+    pub async fn rename(&mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> io::Result<()> {
+        let from = self.root.join(from);
+        let to = self.root.join(to);
+        rocket::trace!("[rename] renaming\n\tfrom: {:?}\n\tto: {:?}", from, to,);
+        fs::rename(from, to).await?;
+        Ok(())
+    }
+
     pub async fn save(
         &mut self,
         path: impl AsRef<Path>,

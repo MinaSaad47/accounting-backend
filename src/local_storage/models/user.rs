@@ -1,14 +1,34 @@
 use rocket::serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize,  Default)]
-#[serde(crate = "rocket::serde", rename = "camelCase")]
+#[derive(Serialize, Debug)]
+#[serde(crate = "rocket::serde", rename_all = "camelCase")]
 pub struct User {
-    #[serde(default)]
-    pub id: Option<i64>,
+    pub id: i64,
     pub name: String,
     pub password: String,
-    #[serde(default)]
     pub is_admin: bool,
-    #[serde(default)]
     pub value: f64,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(crate = "rocket::serde", rename_all = "camelCase")]
+pub struct RegisterUser {
+    pub name: String,
+    pub password: String,
+    pub is_admin: bool,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(crate = "rocket::serde", rename_all = "camelCase")]
+pub struct LoginUser {
+    pub name: String,
+    pub password: String,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(crate = "rocket::serde", rename_all = "camelCase")]
+pub struct UpdateUser {
+    pub name: String,
+    pub password: String,
+    pub is_admin: bool,
 }
