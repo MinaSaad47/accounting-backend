@@ -1,22 +1,67 @@
+use chrono::Utc;
 use rocket::serde::{Deserialize, Serialize};
+use sqlx::types::chrono::DateTime;
 
-use crate::local_storage::rows;
-
-#[derive(Serialize, Deserialize, Debug, Default)]
-#[serde(crate = "rocket::serde")]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(crate = "rocket::serde", rename_all = "camelCase")]
 pub struct Company {
-    #[serde(flatten)]
-    pub company: rows::Company,
+    pub id: i64,
+    pub owner: String,
+    pub commercial_feature: String,
+    pub is_working: bool,
+    pub legal_entity: Option<String>,
+    pub file_number: Option<String>,
+    pub register_number: Option<String>,
+    pub start_date: Option<DateTime<Utc>>,
+    pub stop_date: Option<DateTime<Utc>>,
+    pub general_tax_mission: Option<String>,
+    pub value_tax_mission: Option<String>,
+    pub activity_nature: Option<String>,
+    pub activity_location: Option<String>,
+    pub record_number: Option<String>,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub email: Option<String>,
 }
 
-impl From<rows::Company> for Company {
-    fn from(company: rows::Company) -> Self {
-        Self { company }
-    }
+#[derive(Deserialize, Debug)]
+#[serde(crate = "rocket::serde", rename_all = "camelCase")]
+pub struct CreateCompany {
+    pub owner: String,
+    pub commercial_feature: String,
+    pub is_working: bool,
+    pub legal_entity: Option<String>,
+    pub file_number: Option<String>,
+    pub register_number: Option<String>,
+    pub start_date: Option<DateTime<Utc>>,
+    pub stop_date: Option<DateTime<Utc>>,
+    pub general_tax_mission: Option<String>,
+    pub value_tax_mission: Option<String>,
+    pub activity_nature: Option<String>,
+    pub activity_location: Option<String>,
+    pub record_number: Option<String>,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub email: Option<String>,
 }
 
-impl AsRef<rows::Company> for Company {
-    fn as_ref(&self) -> &rows::Company {
-        &self.company
-    }
+#[derive(Deserialize, Debug)]
+#[serde(crate = "rocket::serde", rename_all = "camelCase")]
+pub struct UpdateCompany {
+    pub owner: String,
+    pub commercial_feature: String,
+    pub is_working: bool,
+    pub legal_entity: Option<String>,
+    pub file_number: Option<String>,
+    pub register_number: Option<String>,
+    pub start_date: Option<DateTime<Utc>>,
+    pub stop_date: Option<DateTime<Utc>>,
+    pub general_tax_mission: Option<String>,
+    pub value_tax_mission: Option<String>,
+    pub activity_nature: Option<String>,
+    pub activity_location: Option<String>,
+    pub record_number: Option<String>,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub email: Option<String>,
 }

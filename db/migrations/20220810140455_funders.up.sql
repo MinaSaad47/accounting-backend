@@ -2,5 +2,5 @@
 CREATE TABLE IF NOT EXISTS funders (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR NOT NULL,
-    company_id BIGINT REFERENCES companies(id) ON DELETE CASCADE
+    company_id BIGINT NOT NULL REFERENCES companies(id) ON DELETE CASCADE
 );

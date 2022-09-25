@@ -15,11 +15,12 @@ pub struct Document {
 
 impl Document {
     pub async fn new(
-        company_name: &str,
+        owner: &str,
+        commercial_feature: &str,
         file: &(impl FileSystemFile + Sync + ?Sized),
     ) -> Option<Self> {
         let path = Path::new("companies")
-            .join(company_name)
+            .join(format!("{} - {}", owner, commercial_feature))
             .join("documents")
             .join(file.name_with_ext()?);
         let name = file.name_with_ext()?.to_owned();

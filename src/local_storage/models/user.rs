@@ -1,10 +1,34 @@
 use rocket::serde::{Deserialize, Serialize};
 
-use crate::local_storage::rows;
-
-#[derive(Serialize, Deserialize, Default)]
-#[serde(crate = "rocket::serde")]
+#[derive(Serialize, Debug)]
+#[serde(crate = "rocket::serde", rename_all = "camelCase")]
 pub struct User {
-    #[serde(flatten)]
-    pub user: rows::User,
+    pub id: i64,
+    pub name: String,
+    pub password: String,
+    pub is_admin: bool,
+    pub value: f64,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(crate = "rocket::serde", rename_all = "camelCase")]
+pub struct RegisterUser {
+    pub name: String,
+    pub password: String,
+    pub is_admin: bool,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(crate = "rocket::serde", rename_all = "camelCase")]
+pub struct LoginUser {
+    pub name: String,
+    pub password: String,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(crate = "rocket::serde", rename_all = "camelCase")]
+pub struct UpdateUser {
+    pub name: String,
+    pub password: String,
+    pub is_admin: bool,
 }

@@ -1,16 +1,20 @@
-use rocket::serde::{Serialize, Deserialize};
-use sqlx::FromRow;
+use chrono::{DateTime, Utc};
+use rocket::serde::{Deserialize, Serialize};
 
-use crate::local_storage::rows;
-
-
-
-#[derive(Serialize, Deserialize, FromRow, Debug, Clone)]
+#[derive(Serialize, Debug)]
 #[serde(crate = "rocket::serde")]
 pub struct Expense {
+    pub id: i64,
+    pub value: f64,
+    pub description: String,
+    pub time: DateTime<Utc>,
     pub company: String,
     pub user: String,
-    #[serde(flatten)]
-    pub expense: rows::Expense,
 }
 
+#[derive(Deserialize, Debug)]
+#[serde(crate = "rocket::serde", rename_all = "camelCase")]
+pub struct CreateExpense {
+    pub value: f64,
+    pub description: String,
+}

@@ -3,12 +3,13 @@ use std::{io, path::Path};
 use crate::{
     accounting_api::{self, AcountingApi},
     file_system::FileSystemFile,
+    local_storage::models::*,
 };
-use rocket::{async_trait, fs::TempFile, futures::future};
+use rocket::{async_trait, fs::TempFile};
 
 use sqlx::postgres::PgDatabaseError;
 
-use super::{models, rows};
+use super::models;
 
 impl From<sqlx::Error> for accounting_api::Error {
     fn from(error: sqlx::Error) -> Self {
@@ -17,8 +18,7 @@ impl From<sqlx::Error> for accounting_api::Error {
             sqlx::Error::RowNotFound => accounting_api::Error::ObjectNotFound,
             sqlx::Error::Database(error) => error
                 .try_downcast_ref::<PgDatabaseError>()
-                .and_then(|error| error.detail())
-                .map(|error| accounting_api::Error::Other(error.to_owned().into()))
+                .map(|error| accounting_api::Error::Other(error.message().to_owned().into()))
                 .unwrap_or(accounting_api::Error::Other("غير معروف".into())),
             _ => accounting_api::Error::Other("غير معروف".into()),
         }
@@ -44,144 +44,153 @@ impl AcountingApi for super::LocalStorageAccountingApi {
 
     async fn create_company(
         &self,
-        c: &Self::Company,
-    ) -> Result<Self::Company, accounting_api::Error> {
-        let mut transaction = self.db.begin().await?;
-
-        let company: rows::Company = sqlx::query_as(
-            r#"
-            INSERT INTO 
-                companies (
-                    commercial_feature,
-                    is_working,
-                    legal_entity,
-                    register_number,
-                    start_date,
-                    general_tax_mission,
-                    activity_nature,
-                    activity_location,
-                    accounts,
-                    record_number,
-                    user_name,
-                    email
-                )
-            VALUES
-                ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-            RETURNING
-                *
-        "#,
-        )
-        .bind(&c.as_ref().commercial_feature)
-        .bind(&c.as_ref().is_working)
-        .bind(&c.as_ref().legal_entity)
-        .bind(&c.as_ref().register_number)
-        .bind(&c.as_ref().start_date)
-        .bind(&c.as_ref().general_tax_mission)
-        .bind(&c.as_ref().activity_nature)
-        .bind(&c.as_ref().activity_location)
-        .bind(&c.as_ref().accounts)
-        .bind(&c.as_ref().record_number)
-        .bind(&c.as_ref().user_name)
-        .bind(&c.as_ref().email)
-        .fetch_one(&mut transaction)
-        .await?;
-
-        transaction.commit().await?;
-
-        Ok(company.into())
-    }
-
-    async fn update_company(
-        &self,
-        c: &mut Self::Company,
+        c: &CreateCompany,
     ) -> Result<Self::Company, accounting_api::Error> {
         let mut transaction = self.db.begin().await?;
 
         let company = sqlx::query_as!(
-            rows::Company,
+            models::Company,
+            r#"
+                INSERT INTO 
+                    companies (
+                        owner,
+                        commercial_feature,
+                        is_working,
+                        legal_entity,
+                        file_number,
+                        register_number,
+                        start_date,
+                        stop_date,
+                        general_tax_mission,
+                        value_tax_mission,
+                        activity_nature,
+                        activity_location,
+                        record_number,
+                        username,
+                        password,
+                        email
+                    )
+                VALUES
+                    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+                RETURNING
+                    *
+            "#,
+            &c.owner,
+            &c.commercial_feature,
+            &c.is_working,
+            &c.legal_entity as _,
+            &c.file_number as _,
+            &c.register_number as _,
+            &c.start_date as _,
+            &c.stop_date as _,
+            &c.general_tax_mission as _,
+            &c.value_tax_mission as _,
+            &c.activity_nature as _,
+            &c.activity_location as _,
+            &c.record_number as _,
+            &c.username as _,
+            &c.password as _,
+            &c.email as _,
+        )
+        .fetch_one(&mut transaction)
+        .await?;
+
+        transaction.commit().await?;
+
+        Ok(company)
+    }
+
+    async fn update_company(
+        &self,
+        id: i64,
+        c: &UpdateCompany,
+    ) -> Result<Self::Company, accounting_api::Error> {
+        let mut transaction = self.db.begin().await?;
+
+        let old_company = sqlx::query!(
+            r#"
+                SELECT
+                    owner, commercial_feature
+                FROM
+                    companies
+                WHERE
+                    id = $1
+            "#,
+            id
+        )
+        .fetch_one(&self.db)
+        .await?;
+
+        let company = sqlx::query_as!(
+            models::Company,
             r#"
                 UPDATE
                     companies
                 SET
-                    commercial_feature = $1,
-                    is_working = $2,
-                    legal_entity = $3,
-                    file_number = $4,
-                    register_number = $5,
-                    start_date = $6,
-                    stop_date = $7,
-                    general_tax_mission = $8,
-                    value_tax_mission = $9,
-                    activity_nature = $10,
-                    activity_location = $11,
-                    accounts = $12,
-                    joining_date = $13,
-                    natural_id = $14,
-                    record_side = $15,
-                    record_number = $16,
-                    user_name = $17,
-                    passport = $18,
-                    verification_code = $19,
-                    email = $20
+                    owner = $1,
+                    commercial_feature = $2,
+                    is_working = $3,
+                    legal_entity = $4,
+                    file_number = $5,
+                    register_number = $6,
+                    start_date = $7,
+                    stop_date = $8,
+                    general_tax_mission = $9,
+                    value_tax_mission = $10,
+                    activity_nature = $11,
+                    activity_location = $12,
+                    record_number = $13,
+                    username = $14,
+                    password = $15,
+                    email = $16
                 WHERE
-                    id = $21
+                    id = $17
                 RETURNING
-                    id AS "id: _",
-                    commercial_feature,
-                    is_working,
-                    legal_entity,
-                    file_number,
-                    register_number,
-                    start_date,
-                    stop_date,
-                    general_tax_mission,
-                    value_tax_mission,
-                    activity_nature,
-                    activity_location,
-                    accounts,
-                    joining_date,
-                    natural_id,
-                    record_side,
-                    record_number,
-                    user_name,
-                    passport,
-                    verification_code,
-                    email
+                    *
             "#,
-            &c.as_ref().commercial_feature,
-            &c.as_ref().is_working,
-            &c.as_ref().legal_entity,
-            &c.as_ref().file_number as _,
-            &c.as_ref().register_number,
-            &c.as_ref().start_date,
-            &c.as_ref().stop_date as _,
-            &c.as_ref().general_tax_mission,
-            &c.as_ref().value_tax_mission as _,
-            &c.as_ref().activity_nature,
-            &c.as_ref().activity_location,
-            &c.as_ref().accounts,
-            &c.as_ref().joining_date as _,
-            &c.as_ref().natural_id as _,
-            &c.as_ref().record_side as _,
-            &c.as_ref().record_number as _,
-            &c.as_ref().user_name,
-            &c.as_ref().passport as _,
-            &c.as_ref().verification_code as _,
-            &c.as_ref().email,
-            &c.as_ref().id as _
+            &c.owner,
+            &c.commercial_feature,
+            &c.is_working,
+            &c.legal_entity as _,
+            &c.file_number as _,
+            &c.register_number as _,
+            &c.start_date as _,
+            &c.stop_date as _,
+            &c.general_tax_mission as _,
+            &c.value_tax_mission as _,
+            &c.activity_nature as _,
+            &c.activity_location as _,
+            &c.record_number as _,
+            &c.username as _,
+            &c.password as _,
+            &c.email as _,
+            &id as _
         )
         .fetch_one(&mut transaction)
         .await?;
+
+        let from = Path::new("companies").join(&format!(
+            "{} - {}",
+            &old_company.owner, &old_company.commercial_feature
+        ));
+        let to = Path::new("companies").join(format!(
+            "{} - {}",
+            &company.owner, &company.commercial_feature
+        ));
+
+        self.fs.write().await.rename(from, to).await?;
+
         transaction.commit().await?;
-        Ok(company.into())
+        Ok(company)
     }
 
     async fn search_company(&self, s: &str) -> Result<Vec<Self::Company>, accounting_api::Error> {
         let companies = sqlx::query_as!(
-            rows::Company,
+            models::Company,
             r#"
                 SELECT DISTINCT ON (companies.id)
-                    companies.id AS "id: _",
+                    companies.id,
+                    owner,
                     commercial_feature,
                     is_working,
                     legal_entity,
@@ -193,14 +202,9 @@ impl AcountingApi for super::LocalStorageAccountingApi {
                     value_tax_mission,
                     activity_nature,
                     activity_location,
-                    accounts,
-                    joining_date,
-                    natural_id,
-                    record_side,
                     record_number,
-                    user_name,
-                    passport,
-                    verification_code,
+                    username,
+                    password,
                     email
                 FROM 
                     companies
@@ -210,6 +214,7 @@ impl AcountingApi for super::LocalStorageAccountingApi {
                     companies.id = funders.company_id
                 WHERE 
                     companies.id::TEXT ILIKE ('%' || $1 || '%') OR
+                    owner ILIKE ('%' || $1 || '%') OR
                     funders.name ILIKE ('%' || $1 || '%') OR
                     companies.commercial_feature ILIKE ('%' || $1 || '%')
             "#,
@@ -222,44 +227,40 @@ impl AcountingApi for super::LocalStorageAccountingApi {
             return Err(Self::Error::ObjectNotFound);
         }
 
-        Ok(companies.into_iter().map(|c| c.into()).collect())
+        Ok(companies)
     }
 
     async fn pay_company(&self, _c: &Self::Company, _v: f64) -> Result<Self::Company, Self::Error> {
         unimplemented!()
     }
 
-    async fn create_user(&self, c: &Self::User) -> Result<Self::User, Self::Error> {
+    async fn register_user(&self, u: &RegisterUser) -> Result<Self::User, Self::Error> {
         let mut transaction = self.db.begin().await?;
 
-        let user = &c.user;
-
         let user = sqlx::query_as!(
-            rows::User,
+            models::User,
             r#"
                 INSERT INTO
                     users (name, password, is_admin, value)
                 VALUES
                     ($1, $2, $3, 0)
                 RETURNING
-                    id AS "id: _", name, password, is_admin, value
+                    *
             "#,
-            &user.name,
-            &user.password,
-            &user.is_admin,
+            &u.name,
+            &u.password,
+            &u.is_admin,
         )
         .fetch_one(&mut transaction)
         .await?;
 
         transaction.commit().await?;
-        Ok(models::User { user })
+        Ok(user)
     }
-    async fn update_user(&self, c: &Self::User) -> Result<Self::User, Self::Error> {
+    async fn update_user(&self, id: i64, c: &UpdateUser) -> Result<Self::User, Self::Error> {
         let mut transaction = self.db.begin().await?;
-        let user = &c.user;
-
         let user = sqlx::query_as!(
-            rows::User,
+            models::User,
             r#"
                 UPDATE
                     users
@@ -269,28 +270,24 @@ impl AcountingApi for super::LocalStorageAccountingApi {
                 WHERE
                     id = $1
                 RETURNING
-                    id AS "id: _", name, password, is_admin, value
+                    *
             "#,
-            &user.id as _,
-            &user.name,
-            &user.password,
+            &id as _,
+            &c.name,
+            &c.password,
         )
         .fetch_one(&mut transaction)
         .await?;
 
         transaction.commit().await?;
-        Ok(models::User { user })
+        Ok(user)
     }
     async fn get_users(&self) -> Result<Vec<Self::User>, Self::Error> {
         let users = sqlx::query_as!(
-            rows::User,
+            models::User,
             r#"
                 SELECT
-                    id AS "id: _",
-                    name,
-                    password,
-                    is_admin,
-                    value
+                    *
                 FROM
                     users
             "#,
@@ -298,16 +295,13 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         .fetch_all(&self.db)
         .await?;
 
-        Ok(users
-            .into_iter()
-            .map(|user| models::User { user })
-            .collect())
+        Ok(users)
     }
     async fn pay_user(&self, id: i64, v: f64) -> Result<Self::User, Self::Error> {
         let mut transaction = self.db.begin().await?;
 
         let user = sqlx::query_as!(
-            rows::User,
+            models::User,
             r#"
                 UPDATE
                     users
@@ -316,7 +310,7 @@ impl AcountingApi for super::LocalStorageAccountingApi {
                 WHERE
                     id = $1
                 RETURNING
-                    id AS "id: _", name, password, is_admin, value
+                    *
             "#,
             id as _,
             v,
@@ -325,43 +319,34 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         .await?;
 
         transaction.commit().await?;
-        Ok(models::User { user })
+        Ok(user)
     }
 
-    async fn login_user(&self, u: &Self::User) -> Result<Self::User, Self::Error> {
-        let user = &u.user;
+    async fn login_user(&self, u: &LoginUser) -> Result<Self::User, Self::Error> {
         let user = sqlx::query_as!(
-            rows::User,
+            models::User,
             r#"
                 SELECT
-                    id AS "id: _",
-                    name,
-                    password,
-                    is_admin,
-                    value
+                    *
                 FROM
                     users
                 WHERE
                     name = $1 AND password = $2
             "#,
-            &user.name,
-            &user.password,
+            &u.name,
+            &u.password,
         )
         .fetch_one(&self.db)
         .await?;
-        Ok(models::User { user })
+        Ok(user)
     }
 
     async fn get_user(&self, id: i64) -> Result<Self::User, Self::Error> {
         let user = sqlx::query_as!(
-            rows::User,
+            models::User,
             r#"
                 SELECT
-                    id AS "id: _",
-                    name,
-                    password,
-                    value,
-                    is_admin
+                    *
                 FROM
                     users
                 WHERE
@@ -371,7 +356,7 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         )
         .fetch_one(&self.db)
         .await?;
-        Ok(models::User { user })
+        Ok(user)
     }
 
     async fn delete_company(&self, id: i64) -> Result<(), Self::Error> {
@@ -410,17 +395,25 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         company_id: Option<i64>,
     ) -> Result<Vec<Self::Expense>, Self::Error> {
         let expenses = sqlx::query_as!(
-            rows::Expense,
+            models::Expense,
             r#"
                 SELECT
-                    id AS "id: _",
-                    value,
+                    expenses.id,
+                    expenses.value,
                     description,
-                    time AS "time?: _",
-                    user_id AS "user_id!: _",
-                    company_id AS "company_id!: _"
+                    time,
+                    users.name AS "user!: _",
+                    companies.commercial_feature AS "company!: _"
                 FROM
                     expenses
+                LEFT JOIN
+                    companies
+                ON
+                    expenses.company_id = companies.id
+                LEFT JOIN
+                    users
+                ON
+                    expenses.user_id = users.id
                 WHERE
                     (user_id = $1 OR $1 IS NULL) AND (company_id = $2 OR $2 IS NULL)
             "#,
@@ -430,47 +423,6 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         .fetch_all(&self.db)
         .await?;
 
-        let expenses = future::join_all(expenses.into_iter().map(|expense| async {
-            let user = sqlx::query!(
-                r#"
-                    SELECT
-                        name
-                    FROM
-                        users
-                    WHERE
-                        id = $1
-                "#,
-                expense.user_id,
-            )
-            .fetch_one(&self.db)
-            .await
-            .expect("user name from expense")
-            .name;
-
-            let company = sqlx::query!(
-                r#"
-                    SELECT
-                        commercial_feature
-                    FROM
-                        companies
-                    WHERE
-                        id = $1
-                "#,
-                expense.company_id,
-            )
-            .fetch_one(&self.db)
-            .await
-            .expect("company commercial_feature from expense")
-            .commercial_feature;
-
-            models::Expense {
-                expense,
-                user,
-                company,
-            }
-        }))
-        .await;
-
         Ok(expenses)
     }
 
@@ -478,14 +430,13 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         &self,
         user_id: i64,
         company_id: i64,
-        value: f64,
-        description: &str,
+        expense: &CreateExpense,
     ) -> Result<Self::Expense, Self::Error> {
-        if value <= 0.0 {
+        if expense.value <= 0.0 {
             return Err(Self::Error::InvalidValue);
         }
 
-        let user = sqlx::query!(
+        let user_value = sqlx::query!(
             r#"
                 SELECT
                     id, value, name
@@ -497,25 +448,12 @@ impl AcountingApi for super::LocalStorageAccountingApi {
             &user_id
         )
         .fetch_one(&self.db)
-        .await?;
+        .await?
+        .value;
 
-        if value > user.value {
-            return Err(Self::Error::NotEnoughUserValue(value, user.value));
+        if expense.value > user_value {
+            return Err(Self::Error::NotEnoughUserValue(expense.value, user_value));
         }
-
-        let company = sqlx::query!(
-            r#"
-                SELECT
-                    id, commercial_feature
-                FROM
-                    companies
-                WHERE
-                    id = $1
-            "#,
-            company_id,
-        )
-        .fetch_one(&self.db)
-        .await?;
 
         let mut transaction = self.db.begin().await?;
 
@@ -527,41 +465,51 @@ impl AcountingApi for super::LocalStorageAccountingApi {
                     value = $2
                 WHERE id = $1
             "#,
-            user.id,
-            user.value - value,
+            user_id,
+            user_value - expense.value,
         )
         .execute(&mut transaction)
         .await?;
 
         let expense = sqlx::query_as!(
-            rows::Expense,
+            models::Expense,
             r#"
                 INSERT INTO
                     expenses (user_id, company_id, value, description)
                 VALUES
                     ($1, $2, $3, $4)
                 RETURNING
-                    id AS "id?: _",
-                    user_id AS "user_id!: _",
-                    company_id AS "company_id!: _",
+                    id,
                     value,
                     description,
-                    time AS "time?: _"
+                    time,
+                    (
+                        SELECT
+                            name
+                        FROM
+                            users
+                        WHERE
+                            id = $1
+                    ) AS "user!: _",
+                    (
+                        SELECT
+                            commercial_feature
+                        FROM
+                            companies
+                        WHERE
+                            id = $2
+                    ) AS "company!: _"
             "#,
-            user.id,
-            company.id,
-            value,
-            description,
+            user_id,
+            company_id,
+            expense.value,
+            expense.description,
         )
         .fetch_one(&mut transaction)
         .await?;
 
         transaction.commit().await?;
-        Ok(Self::Expense {
-            user: user.name,
-            company: company.commercial_feature,
-            expense,
-        })
+        Ok(expense)
     }
     async fn delete_expense(&self, id: i64) -> Result<(), Self::Error> {
         let mut transaction = self.db.begin().await?;
@@ -602,17 +550,25 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         company_id: Option<i64>,
     ) -> Result<Vec<Self::Income>, Self::Error> {
         let incomes = sqlx::query_as!(
-            rows::Income,
+            models::Income,
             r#"
                 SELECT
-                    id AS "id: _",
-                    value,
+                    incomes.id,
+                    incomes.value,
                     description,
-                    time AS "time?: _",
-                    admin_id AS "admin_id!: _",
-                    company_id AS "company_id!: _"
+                    time,
+                    users.name AS "admin!: _",
+                    companies.commercial_feature AS "company!: _"
                 FROM
                     incomes
+                LEFT JOIN
+                    companies
+                ON
+                    incomes.company_id = companies.id
+                LEFT JOIN
+                    users
+                ON
+                    incomes.admin_id = users.id
                 WHERE
                     (admin_id = $1 OR $1 IS NULL) AND (company_id = $2 OR $2 IS NULL)
             "#,
@@ -622,47 +578,6 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         .fetch_all(&self.db)
         .await?;
 
-        let incomes = future::join_all(incomes.into_iter().map(|income| async {
-            let admin = sqlx::query!(
-                r#"
-                    SELECT
-                        name
-                    FROM
-                        users
-                    WHERE
-                        id = $1
-                "#,
-                income.admin_id,
-            )
-            .fetch_one(&self.db)
-            .await
-            .expect("user name from income")
-            .name;
-
-            let company = sqlx::query!(
-                r#"
-                    SELECT
-                        commercial_feature
-                    FROM
-                        companies
-                    WHERE
-                        id = $1
-                "#,
-                income.company_id,
-            )
-            .fetch_one(&self.db)
-            .await
-            .expect("company commercial_feature from income")
-            .commercial_feature;
-
-            models::Income {
-                income,
-                admin,
-                company,
-            }
-        }))
-        .await;
-
         Ok(incomes)
     }
 
@@ -670,68 +585,49 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         &self,
         admin_id: i64,
         company_id: i64,
-        value: f64,
-        description: &str,
+        income: &CreateIncome,
     ) -> Result<Self::Income, Self::Error> {
-        let admin = sqlx::query!(
-            r#"
-                SELECT
-                    id, name
-                FROM
-                    users
-                WHERE
-                    id = $1
-            "#,
-            &admin_id
-        )
-        .fetch_one(&self.db)
-        .await?;
-
-        let company = sqlx::query!(
-            r#"
-                SELECT
-                    id, commercial_feature
-                FROM
-                    companies
-                WHERE
-                    id = $1
-            "#,
-            company_id,
-        )
-        .fetch_one(&self.db)
-        .await?;
-
         let mut transaction = self.db.begin().await?;
 
         let income = sqlx::query_as!(
-            rows::Income,
+            models::Income,
             r#"
                 INSERT INTO
-                    incomes (admin_id, company_id, value, description)
+                    incomes (company_id, admin_id, value, description)
                 VALUES
                     ($1, $2, $3, $4)
                 RETURNING
-                    id AS "id?: _",
-                    admin_id AS "admin_id!: _",
-                    company_id AS "company_id!: _",
+                    id,
                     value,
                     description,
-                    time AS "time?: _"
+                    time,
+                    (
+                        SELECT
+                            commercial_feature
+                        FROM
+                            companies
+                        WHERE
+                            id = $1
+                    ) AS "company!: _",
+                    (
+                        SELECT
+                            name
+                        FROM
+                            users
+                        WHERE
+                            id = $2
+                    ) AS "admin!: _"
             "#,
-            admin.id,
-            company.id,
-            value,
-            description,
+            company_id,
+            admin_id,
+            income.value,
+            income.description,
         )
         .fetch_one(&mut transaction)
         .await?;
 
         transaction.commit().await?;
-        Ok(Self::Income {
-            admin: admin.name,
-            company: company.commercial_feature,
-            income,
-        })
+        Ok(income)
     }
     async fn delete_income(&self, id: i64) -> Result<(), Self::Error> {
         let mut transaction = self.db.begin().await?;
@@ -756,10 +652,10 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         file: &mut TempFile<'_>,
     ) -> Result<Self::Document, Self::Error> {
         rocket::debug!("[create_document] creating {:?}", file.name_with_ext());
-        let company_name = sqlx::query!(
+        let company = sqlx::query!(
             r#"
                 SELECT
-                    commercial_feature
+                    owner, commercial_feature
                 FROM
                     companies
                 WHERE
@@ -769,10 +665,9 @@ impl AcountingApi for super::LocalStorageAccountingApi {
             company_id,
         )
         .fetch_one(&self.db)
-        .await?
-        .commercial_feature;
+        .await?;
 
-        let document = models::Document::new(&company_name, &file)
+        let document = models::Document::new(&company.owner, &company.commercial_feature, &file)
             .await
             .ok_or(Self::Error::Other("حدث خطأ في انشاء المستند".into()))?;
 
@@ -782,10 +677,10 @@ impl AcountingApi for super::LocalStorageAccountingApi {
     }
 
     async fn get_documents(&self, company_id: i64) -> Result<Vec<Self::Document>, Self::Error> {
-        let company_name = sqlx::query!(
+        let company = sqlx::query!(
             r#"
                 SELECT
-                    commercial_feature
+                    owner, commercial_feature
                 FROM
                     companies
                 WHERE
@@ -795,15 +690,22 @@ impl AcountingApi for super::LocalStorageAccountingApi {
             company_id,
         )
         .fetch_one(&self.db)
-        .await?
-        .commercial_feature;
+        .await?;
 
-        let path = Path::new("companies").join(&company_name).join("documents");
+        let path = Path::new("companies")
+            .join(&format!(
+                "{} - {}",
+                company.owner, company.commercial_feature,
+            ))
+            .join("documents");
 
         let mut documents = vec![];
 
         for path in self.fs.read().await.get(path).await {
-            if let Some(document) = models::Document::new(&company_name, &path.as_ref()).await {
+            if let Some(document) =
+                models::Document::new(&company.owner, &company.commercial_feature, &path.as_ref())
+                    .await
+            {
                 documents.push(document);
             }
         }
@@ -820,12 +722,12 @@ impl AcountingApi for super::LocalStorageAccountingApi {
     async fn create_funder(
         &self,
         company_id: i64,
-        f: &Self::Funder,
+        f: &CreateFunder,
     ) -> Result<Self::Funder, Self::Error> {
         let mut transaction = self.db.begin().await?;
 
         let funder = sqlx::query_as!(
-            rows::Funder,
+            models::Funder,
             r#"
                 INSERT INTO
                     funders (
@@ -835,26 +737,22 @@ impl AcountingApi for super::LocalStorageAccountingApi {
                     $1, $2
                 )
                 RETURNING
-                    id AS "id?: _",
-                    name,
-                    company_id AS "company_id!: _"
+                    *
             "#,
-            f.as_ref().name as _,
+            f.name as _,
             company_id as _,
         )
         .fetch_one(&mut transaction)
         .await?;
         transaction.commit().await?;
-        Ok(funder.into())
+        Ok(funder)
     }
     async fn get_funders(&self, company_id: i64) -> Result<Vec<Self::Funder>, Self::Error> {
         let funders = sqlx::query_as!(
-            rows::Funder,
+            models::Funder,
             r#"
                 SELECT
-                    id AS "id?: _",
-                    name,
-                    company_id AS "company_id!: _"
+                    *
                 FROM
                     funders
                 WHERE
@@ -865,7 +763,7 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         .fetch_all(&self.db)
         .await?;
 
-        Ok(funders.into_iter().map(|f| f.into()).collect())
+        Ok(funders)
     }
     async fn delete_funder(&self, id: i64) -> Result<(), Self::Error> {
         let mut transaction = self.db.begin().await?;
