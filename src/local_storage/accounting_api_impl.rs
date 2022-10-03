@@ -169,16 +169,20 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         .fetch_one(&mut transaction)
         .await?;
 
-        let from = Path::new("companies").join(&format!(
-            "{} - {}",
-            &old_company.owner, &old_company.commercial_feature
-        ));
-        let to = Path::new("companies").join(format!(
-            "{} - {}",
-            &company.owner, &company.commercial_feature
-        ));
+        let (from, to) = (
+            Path::new("companies").join(&format!(
+                "{} - {}",
+                &old_company.owner, &old_company.commercial_feature
+            )),
+            Path::new("companies").join(format!(
+                "{} - {}",
+                &company.owner, &company.commercial_feature
+            )),
+        );
 
-        self.fs.write().await.rename(from, to).await?;
+        if from.exists() {
+            self.fs.write().await.rename(from, to).await?;
+        }
 
         transaction.commit().await?;
         Ok(company)
@@ -737,7 +741,7 @@ impl AcountingApi for super::LocalStorageAccountingApi {
                     $1, $2
                 )
                 RETURNING
-                    *
+                    id, name
             "#,
             f.name as _,
             company_id as _,
@@ -752,7 +756,7 @@ impl AcountingApi for super::LocalStorageAccountingApi {
             models::Funder,
             r#"
                 SELECT
-                    *
+                    id, name
                 FROM
                     funders
                 WHERE
