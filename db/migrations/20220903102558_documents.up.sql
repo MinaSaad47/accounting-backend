@@ -1,7 +1,0 @@
--- Add up migration script here
-CREATE TABLE IF NOT EXISTS documents (
-    id BIGSERIAL PRIMARY KEY,
-    name VARCHAR NOT NULL,
-    time TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    company_id BIGINT NOT NULL REFERENCES companies(id) ON DELETE CASCADE
-)

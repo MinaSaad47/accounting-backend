@@ -38,7 +38,7 @@ pub fn stage() -> AdHoc {
         )
         .await
         .expect("database connection");
-        sqlx::migrate!("db/migrations")
+        sqlx::migrate!()
             .run(&storage.db)
             .await
             .expect("migrations run");
