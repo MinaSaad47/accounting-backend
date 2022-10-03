@@ -1,11 +1,11 @@
 use rocket::serde::{Deserialize, Serialize};
+use sqlx::types::Uuid;
 
 #[derive(Serialize, Debug)]
 #[serde(crate = "rocket::serde", rename_all = "camelCase")]
 pub struct Funder {
     pub id: Uuid,
     pub name: String,
-    pub company_id: i64,
 }
 
 #[derive(Deserialize, Debug)]
