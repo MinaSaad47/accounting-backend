@@ -1,5 +1,4 @@
 /target
-/db/file_system/*
 .dockerignore
 Dockerfile
 .git

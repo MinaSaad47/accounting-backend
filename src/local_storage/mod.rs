@@ -34,7 +34,7 @@ pub fn stage() -> AdHoc {
     AdHoc::on_ignite("database stage", |rocket| async {
         let storage = LocalStorageAccountingApi::new(
             &env::var("DATABASE_URL").expect("`DATABASE_URL` must be set"),
-            "db/file_system",
+            &env::var("DATA_PATH").expect("`DATA_PATH` must be set"),
         )
         .await
         .expect("database connection");
