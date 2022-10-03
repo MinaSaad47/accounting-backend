@@ -2,6 +2,7 @@ use rocket::{
     delete, fairing::AdHoc, form::Form, fs::TempFile, get, post, put, routes, serde::json::Json,
     FromForm, State,
 };
+use sqlx::types::Uuid;
 
 use crate::{
     accounting_api::AcountingApi,
@@ -45,7 +46,7 @@ pub async fn search_company_user(
 
 #[put("/<id>", format = "application/json", data = "<company>")]
 pub async fn update_company(
-    id: i64,
+    id: Uuid,
     company: Json<UpdateCompany>,
     storage: &State<LocalStorageAccountingApi>,
     _ag: AGuard,
@@ -61,7 +62,7 @@ pub async fn update_company(
     data = "<expense>"
 )]
 pub async fn create_expense(
-    company_id: i64,
+    company_id: Uuid,
     expense: Json<CreateExpense>,
     storage: &State<LocalStorageAccountingApi>,
     ug: UGuard,
@@ -77,7 +78,7 @@ pub async fn create_expense(
     data = "<income>"
 )]
 pub async fn create_income(
-    company_id: i64,
+    company_id: Uuid,
     income: Json<CreateIncome>,
     storage: &State<LocalStorageAccountingApi>,
     ag: AGuard,
@@ -89,7 +90,7 @@ pub async fn create_income(
 
 #[delete("/<id>")]
 pub async fn delete_company(
-    id: i64,
+    id: Uuid,
     storage: &State<LocalStorageAccountingApi>,
     _ag: AGuard,
 ) -> ResponseResult<()> {
@@ -104,7 +105,7 @@ struct Upload<'r> {
 
 #[post("/<company_id>/documents", data = "<upload>")]
 async fn upload_document(
-    company_id: i64,
+    company_id: Uuid,
     mut upload: Form<Upload<'_>>,
     storage: &State<LocalStorageAccountingApi>,
 ) -> ResponseResult<Document> {
@@ -120,7 +121,7 @@ async fn upload_document(
 
 #[get("/<company_id>/documents")]
 async fn get_documents_admin(
-    company_id: i64,
+    company_id: Uuid,
     storage: &State<LocalStorageAccountingApi>,
     _ag: AGuard,
 ) -> ResponseResult<Vec<Document>> {
@@ -130,7 +131,7 @@ async fn get_documents_admin(
 
 #[get("/<company_id>/documents", rank = 2)]
 async fn get_documents_user(
-    company_id: i64,
+    company_id: Uuid,
     storage: &State<LocalStorageAccountingApi>,
     _ug: UGuard,
 ) -> ResponseResult<Vec<Document>> {
@@ -144,7 +145,7 @@ async fn get_documents_user(
     data = "<funder>"
 )]
 async fn create_funder(
-    company_id: i64,
+    company_id: Uuid,
     funder: Json<CreateFunder>,
     storage: &State<LocalStorageAccountingApi>,
     _ag: AGuard,
@@ -155,7 +156,7 @@ async fn create_funder(
 
 #[get("/<company_id>/funders")]
 async fn get_funders_admin(
-    company_id: i64,
+    company_id: Uuid,
     storage: &State<LocalStorageAccountingApi>,
     _ag: AGuard,
 ) -> ResponseResult<Vec<Funder>> {
@@ -165,7 +166,7 @@ async fn get_funders_admin(
 
 #[get("/<company_id>/funders", rank = 2)]
 async fn get_funders_user(
-    company_id: i64,
+    company_id: Uuid,
     storage: &State<LocalStorageAccountingApi>,
     _ug: UGuard,
 ) -> ResponseResult<Vec<Funder>> {

@@ -1,11 +1,11 @@
 use chrono::Utc;
 use rocket::serde::{Deserialize, Serialize};
-use sqlx::types::chrono::DateTime;
+use sqlx::types::{chrono::DateTime, Uuid};
 
 #[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(crate = "rocket::serde", rename_all = "camelCase")]
 pub struct Company {
-    pub id: i64,
+    pub id: Uuid,
     pub owner: String,
     pub commercial_feature: String,
     pub is_working: bool,

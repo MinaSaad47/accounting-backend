@@ -1,11 +1,12 @@
 use chrono::{DateTime, Utc};
 use rocket::serde::{Deserialize, Serialize};
+use sqlx::types::Uuid;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(crate = "rocket::serde")]
 pub struct Income {
     #[serde(default)]
-    pub id: i64,
+    pub id: Uuid,
     pub value: f64,
     pub description: String,
     pub time: DateTime<Utc>,

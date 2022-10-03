@@ -9,3 +9,5 @@ DROP TABLE funders;
 DROP TABLE companies;
 -- users table
 DROP TABLE users;
+-- extensions
+DROP EXTENSION IF EXISTS "pgcrypto";

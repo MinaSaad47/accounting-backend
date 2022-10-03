@@ -1,4 +1,5 @@
 use rocket::{delete, fairing::AdHoc, routes, State};
+use sqlx::types::Uuid;
 
 use crate::{
     accounting_api::AcountingApi,
@@ -9,7 +10,7 @@ use crate::{
 
 #[delete("/<id>")]
 pub async fn delete_funder(
-    id: i64,
+    id: Uuid,
     storage: &State<LocalStorageAccountingApi>,
     _ag: AGuard,
 ) -> ResponseResult<()> {

@@ -3,7 +3,7 @@ use rocket::serde::{Deserialize, Serialize};
 #[derive(Serialize, Debug)]
 #[serde(crate = "rocket::serde", rename_all = "camelCase")]
 pub struct Funder {
-    pub id: i64,
+    pub id: Uuid,
     pub name: String,
     pub company_id: i64,
 }

@@ -3,6 +3,7 @@ use rocket::serde::json::Json;
 use rocket::serde::{Deserialize, Serialize};
 
 use rocket::{delete, get, patch, post, routes, State};
+use sqlx::types::Uuid;
 
 use crate::accounting_api::AcountingApi;
 use crate::auth::{AGuard, ApiToken, UGuard};
@@ -77,7 +78,7 @@ pub struct Value {
 
 #[patch("/<id>", format = "application/json", data = "<value>")]
 pub async fn pay_user(
-    id: i64,
+    id: Uuid,
     value: Json<Value>,
     storage: &State<LocalStorageAccountingApi>,
     _ag: AGuard,
@@ -88,7 +89,7 @@ pub async fn pay_user(
 
 #[delete("/<id>")]
 pub async fn delete_user(
-    id: i64,
+    id: Uuid,
     storage: &State<LocalStorageAccountingApi>,
     _ag: AGuard,
 ) -> ResponseResult<()> {

@@ -1,4 +1,5 @@
 use rocket::{delete, fairing::AdHoc, get, routes, FromForm, State};
+use sqlx::types::Uuid;
 
 use crate::{
     accounting_api::AcountingApi,
@@ -17,13 +18,13 @@ pub struct GetParam {
 #[derive(Debug, FromForm, PartialEq)]
 #[allow(dead_code)]
 struct Company {
-    id: i64,
+    id: Uuid,
 }
 
 #[derive(Debug, FromForm, PartialEq)]
 #[allow(dead_code)]
 struct User {
-    id: i64,
+    id: Uuid,
 }
 
 #[get("/?<param..>")]
@@ -43,7 +44,7 @@ pub async fn get_expenses(
 
 #[delete("/<id>")]
 pub async fn delete_expense(
-    id: i64,
+    id: Uuid,
     storage: &State<LocalStorageAccountingApi>,
     _ug: UGuard,
 ) -> ResponseResult<()> {
@@ -53,9 +54,6 @@ pub async fn delete_expense(
 
 pub fn stage() -> AdHoc {
     AdHoc::on_ignite("expenses stage", |rocket| async {
-        rocket.mount(
-            "/api/expenses",
-            routes![get_expenses, delete_expense],
-        )
+        rocket.mount("/api/expenses", routes![get_expenses, delete_expense])
     })
 }
