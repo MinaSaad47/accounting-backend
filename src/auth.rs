@@ -9,11 +9,12 @@ use rocket::{
 };
 
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use sqlx::types::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
 struct Claims {
-    sub: i64,
+    sub: Uuid,
     is_admin: bool,
     exp: usize,
 }
@@ -25,8 +26,12 @@ pub struct ApiToken<'r>(pub Cow<'r, str>);
 const SECRET: &str = "hello world secret";
 
 impl<'r> ApiToken<'r> {
-    pub fn generate(id: i64, is_admin: bool) -> Self {
-        let claims = Claims { sub: id, is_admin, exp: usize::MAX };
+    pub fn generate(id: Uuid, is_admin: bool) -> Self {
+        let claims = Claims {
+            sub: id,
+            is_admin,
+            exp: usize::MAX,
+        };
         let token = encode(
             &Header::default(),
             &claims,
@@ -38,7 +43,7 @@ impl<'r> ApiToken<'r> {
         api_token
     }
 
-    fn validate(&self) -> Option<(i64, bool)> {
+    fn validate(&self) -> Option<(Uuid, bool)> {
         let token_data = decode::<Claims>(
             &self.0,
             &DecodingKey::from_secret(SECRET.as_ref()),
@@ -56,8 +61,8 @@ pub enum ApiTokenError {
     Invalid,
 }
 
-pub struct UGuard(pub i64);
-pub struct AGuard(pub i64);
+pub struct UGuard(pub Uuid);
+pub struct AGuard(pub Uuid);
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for AGuard {
@@ -94,9 +99,7 @@ impl<'r> FromRequest<'r> for UGuard {
                 let api_token = ApiToken(auth.into());
                 rocket::debug!("[token] validating: {api_token:?}");
                 match api_token.validate() {
-                    Some(t) => {
-                            Outcome::Success(UGuard(t.0))
-                    }
+                    Some(t) => Outcome::Success(UGuard(t.0)),
                     None => Outcome::Failure((Status::Unauthorized, ApiTokenError::Invalid)),
                 }
             }

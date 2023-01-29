@@ -7,7 +7,7 @@ use crate::{
 };
 use rocket::{async_trait, fs::TempFile};
 
-use sqlx::postgres::PgDatabaseError;
+use sqlx::{postgres::PgDatabaseError, types::Uuid};
 
 use super::models;
 
@@ -102,7 +102,7 @@ impl AcountingApi for super::LocalStorageAccountingApi {
 
     async fn update_company(
         &self,
-        id: i64,
+        id: Uuid,
         c: &UpdateCompany,
     ) -> Result<Self::Company, accounting_api::Error> {
         let mut transaction = self.db.begin().await?;
@@ -169,16 +169,20 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         .fetch_one(&mut transaction)
         .await?;
 
-        let from = Path::new("companies").join(&format!(
-            "{} - {}",
-            &old_company.owner, &old_company.commercial_feature
-        ));
-        let to = Path::new("companies").join(format!(
-            "{} - {}",
-            &company.owner, &company.commercial_feature
-        ));
+        let (from, to) = (
+            Path::new("companies").join(&format!(
+                "{} - {}",
+                &old_company.owner, &old_company.commercial_feature
+            )),
+            Path::new("companies").join(format!(
+                "{} - {}",
+                &company.owner, &company.commercial_feature
+            )),
+        );
 
-        self.fs.write().await.rename(from, to).await?;
+        if from.exists() {
+            self.fs.write().await.rename(from, to).await?;
+        }
 
         transaction.commit().await?;
         Ok(company)
@@ -257,7 +261,7 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         transaction.commit().await?;
         Ok(user)
     }
-    async fn update_user(&self, id: i64, c: &UpdateUser) -> Result<Self::User, Self::Error> {
+    async fn update_user(&self, id: Uuid, c: &UpdateUser) -> Result<Self::User, Self::Error> {
         let mut transaction = self.db.begin().await?;
         let user = sqlx::query_as!(
             models::User,
@@ -297,7 +301,7 @@ impl AcountingApi for super::LocalStorageAccountingApi {
 
         Ok(users)
     }
-    async fn pay_user(&self, id: i64, v: f64) -> Result<Self::User, Self::Error> {
+    async fn pay_user(&self, id: Uuid, v: f64) -> Result<Self::User, Self::Error> {
         let mut transaction = self.db.begin().await?;
 
         let user = sqlx::query_as!(
@@ -341,7 +345,7 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         Ok(user)
     }
 
-    async fn get_user(&self, id: i64) -> Result<Self::User, Self::Error> {
+    async fn get_user(&self, id: Uuid) -> Result<Self::User, Self::Error> {
         let user = sqlx::query_as!(
             models::User,
             r#"
@@ -359,7 +363,7 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         Ok(user)
     }
 
-    async fn delete_company(&self, id: i64) -> Result<(), Self::Error> {
+    async fn delete_company(&self, id: Uuid) -> Result<(), Self::Error> {
         sqlx::query!(
             r#"
                 DELETE FROM
@@ -374,7 +378,7 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         Ok(())
     }
 
-    async fn delete_user(&self, id: i64) -> Result<(), Self::Error> {
+    async fn delete_user(&self, id: Uuid) -> Result<(), Self::Error> {
         sqlx::query!(
             r#"
                 DELETE FROM
@@ -391,8 +395,8 @@ impl AcountingApi for super::LocalStorageAccountingApi {
 
     async fn get_expenses(
         &self,
-        user_id: Option<i64>,
-        company_id: Option<i64>,
+        user_id: Option<Uuid>,
+        company_id: Option<Uuid>,
     ) -> Result<Vec<Self::Expense>, Self::Error> {
         let expenses = sqlx::query_as!(
             models::Expense,
@@ -428,8 +432,8 @@ impl AcountingApi for super::LocalStorageAccountingApi {
 
     async fn create_expense(
         &self,
-        user_id: i64,
-        company_id: i64,
+        user_id: Uuid,
+        company_id: Uuid,
         expense: &CreateExpense,
     ) -> Result<Self::Expense, Self::Error> {
         if expense.value <= 0.0 {
@@ -511,7 +515,7 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         transaction.commit().await?;
         Ok(expense)
     }
-    async fn delete_expense(&self, id: i64) -> Result<(), Self::Error> {
+    async fn delete_expense(&self, id: Uuid) -> Result<(), Self::Error> {
         let mut transaction = self.db.begin().await?;
         let result = sqlx::query!(
             r#"
@@ -546,8 +550,8 @@ impl AcountingApi for super::LocalStorageAccountingApi {
     }
     async fn get_incomes(
         &self,
-        admin_id: Option<i64>,
-        company_id: Option<i64>,
+        admin_id: Option<Uuid>,
+        company_id: Option<Uuid>,
     ) -> Result<Vec<Self::Income>, Self::Error> {
         let incomes = sqlx::query_as!(
             models::Income,
@@ -583,8 +587,8 @@ impl AcountingApi for super::LocalStorageAccountingApi {
 
     async fn create_income(
         &self,
-        admin_id: i64,
-        company_id: i64,
+        admin_id: Uuid,
+        company_id: Uuid,
         income: &CreateIncome,
     ) -> Result<Self::Income, Self::Error> {
         let mut transaction = self.db.begin().await?;
@@ -629,7 +633,7 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         transaction.commit().await?;
         Ok(income)
     }
-    async fn delete_income(&self, id: i64) -> Result<(), Self::Error> {
+    async fn delete_income(&self, id: Uuid) -> Result<(), Self::Error> {
         let mut transaction = self.db.begin().await?;
         sqlx::query!(
             r#"
@@ -648,7 +652,7 @@ impl AcountingApi for super::LocalStorageAccountingApi {
 
     async fn create_document(
         &self,
-        company_id: i64,
+        company_id: Uuid,
         file: &mut TempFile<'_>,
     ) -> Result<Self::Document, Self::Error> {
         rocket::debug!("[create_document] creating {:?}", file.name_with_ext());
@@ -676,7 +680,7 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         Ok(document)
     }
 
-    async fn get_documents(&self, company_id: i64) -> Result<Vec<Self::Document>, Self::Error> {
+    async fn get_documents(&self, company_id: Uuid) -> Result<Vec<Self::Document>, Self::Error> {
         let company = sqlx::query!(
             r#"
                 SELECT
@@ -721,7 +725,7 @@ impl AcountingApi for super::LocalStorageAccountingApi {
 
     async fn create_funder(
         &self,
-        company_id: i64,
+        company_id: Uuid,
         f: &CreateFunder,
     ) -> Result<Self::Funder, Self::Error> {
         let mut transaction = self.db.begin().await?;
@@ -737,7 +741,7 @@ impl AcountingApi for super::LocalStorageAccountingApi {
                     $1, $2
                 )
                 RETURNING
-                    *
+                    id, name
             "#,
             f.name as _,
             company_id as _,
@@ -747,12 +751,12 @@ impl AcountingApi for super::LocalStorageAccountingApi {
         transaction.commit().await?;
         Ok(funder)
     }
-    async fn get_funders(&self, company_id: i64) -> Result<Vec<Self::Funder>, Self::Error> {
+    async fn get_funders(&self, company_id: Uuid) -> Result<Vec<Self::Funder>, Self::Error> {
         let funders = sqlx::query_as!(
             models::Funder,
             r#"
                 SELECT
-                    *
+                    id, name
                 FROM
                     funders
                 WHERE
@@ -765,7 +769,7 @@ impl AcountingApi for super::LocalStorageAccountingApi {
 
         Ok(funders)
     }
-    async fn delete_funder(&self, id: i64) -> Result<(), Self::Error> {
+    async fn delete_funder(&self, id: Uuid) -> Result<(), Self::Error> {
         let mut transaction = self.db.begin().await?;
 
         sqlx::query!(

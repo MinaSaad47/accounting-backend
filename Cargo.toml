@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rocket = { version = "0.5.0-rc.2", features = ["json"] }
+rocket = { version = "0.5.0-rc.2", features = ["json" , "uuid"] }
 serde_json = "1"
 jsonwebtoken = "8.1.1"
 thiserror = "1"
@@ -15,7 +15,7 @@ dotenvy = "0.15.3"
 [dependencies.sqlx]
 version = "0.6.1"
 default-features = false
-features = ["runtime-tokio-rustls", "migrate", "macros", "postgres", "chrono", "json", "offline"]
+features = ["runtime-tokio-rustls", "migrate", "macros", "postgres", "chrono", "json", "offline", "uuid"]
 
 
 [dependencies.chrono]

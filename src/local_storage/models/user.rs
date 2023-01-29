@@ -1,9 +1,10 @@
 use rocket::serde::{Deserialize, Serialize};
+use sqlx::types::Uuid;
 
 #[derive(Serialize, Debug)]
 #[serde(crate = "rocket::serde", rename_all = "camelCase")]
 pub struct User {
-    pub id: i64,
+    pub id: Uuid,
     pub name: String,
     pub password: String,
     pub is_admin: bool,
